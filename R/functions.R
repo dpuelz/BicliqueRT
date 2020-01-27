@@ -1,14 +1,72 @@
-#' Load in necessary libraries
-get_libraries = function(){
-  library(readstata13)
-  # library(biclique)
-  library(Matrix)
-  library(filematrix)
-  library(data.table)
-  library(pbapply)
-  library(lattice)
-  library(grid)
-  library(gridExtra)
+#' One-sided testing
+#'
+#' Decides to reject or not based on observed test statistic value \code{tobs} and randomization values \code{tvals}.
+#'
+#' @param tobs The observed value of the test statistic (scalar).
+#' @param tvals Vector of randomization values of the test statistic (to compare with \code{tobs}).
+#' @param alpha Desired level of the test (between 0 to 1).
+#' @param tol Used to check whether \code{tobs} is equal to the 1-\code{alpha} quantile of \code{tvals}.
+#' @details
+#' The test may randomize to achieve the specified level \code{alpha}
+#' when there are very few randomization values.
+#' @return Test decision (binary).
+#' @seealso Testing Statistical Hypotheses (Ch. 15, Lehman and Romano, 2006)
+one_sided_test = function(tobs, tvals, alpha, tol=1e-14) {
+  srt = sort(tvals)
+  M = length(tvals)
+  k = ceiling(M * (1-alpha))
+  Tk = srt[k]
+  if(abs(tobs - Tk) < tol) {
+    # if tobs = Tk
+    ax = (M * alpha - sum(tvals > Tk)) / sum(abs(tvals - Tk) < tol)
+    return(runif(1) <= ax) ## randomize decision.
+  }
+
+  return(tobs > Tk)
+}
+
+#' Two-sided testing
+#'
+#' Decides to reject or not based on observed test statistic value \code{tobs}
+#' and randomization values \code{tvals}. The test may randomize to achieve the specified level \code{alpha}
+#' when there are very few randomization values.
+#'
+#' @param tobs The observed value of the test statistic (scalar).
+#' @param tvals Vector of randomization values of the test statistic (to compare with \code{tobs}).
+#' @param alpha Desired level of the test (between 0 to 1).
+#'
+#' @return Test decision (binary).
+#' @seealso Testing Statistical Hypotheses (Ch. 15, Lehman and Romano, 2006)
+two_sided_test = function(tobs, tvals, alpha) {
+  m1 = one_sided_test(tobs, tvals, alpha=alpha/2)
+  m2 = one_sided_test(-tobs, -tvals, alpha=alpha/2) # only one can be 1.
+  return(m1 + m2)
+}
+
+#' Calculates p-value or test decision
+#'
+#' Depending on \code{ret_pval} this function returns either a p-value for the test or the binary decision.
+#'
+#' @param rtest_out A \code{List} with elements \code{tobs}, \code{tvals} (see \link{one_sided_test} for details.)
+#' @param ret_pval A \code{Boolean} indicating whether to return a p-value (TRUE) or not.
+#' @param alpha Desired test level (from 0 to 1).
+#' @return Binary decision if \code{ret_pval} is TRUE, or the p-value otherwise.
+#' @details Returns 1 if the test rejects, 0 otherwise.
+out_pval = function(rtest_out, ret_pval, alpha) {
+  tobs = rtest_out$tobs
+  tvals = c(rtest_out$tvals)
+
+  n_all = length(tvals)
+  n_higher = sum(tvals > (tobs + 1e-12))
+  n_lower = sum(tvals < (tobs - 1e-12))
+  n_equal = n_all - n_lower - n_higher
+
+  p1 = (n_equal + n_higher) / n_all  # P(T >= Tobs)
+  p2 = (n_equal + n_lower) / n_all  # P(T <= Tobs)
+
+  pval = min(p1, p2)
+  if(ret_pval) return(pval)
+  return(two_sided_test(tobs, tvals, alpha = alpha))  # this test is less conservative.
 }
 
 #' compute the observed outcome vector, given potential outcomes on the exposures
