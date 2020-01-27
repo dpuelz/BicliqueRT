@@ -85,7 +85,7 @@ out_clique = function(z.id,decom){
   }
 }
 
-out_bicliquedecom = function(NEmat,Zobs_id,minr=50,minc=50,stopatZobs=FALSE){
+out_biclique_decomposition = function(NEmat,Zobs_id,minr,minc,stop_at_Zobs=FALSE){
   library(biclust)
 
   iremove = which(rowSums(NEmat!=0)==0)  # removes isolated units.
@@ -115,7 +115,7 @@ out_bicliquedecom = function(NEmat,Zobs_id,minr=50,minc=50,stopatZobs=FALSE){
     oldnames = colnames(new.NEmat)
     drop.ind = match(dropnames,oldnames)
 
-    if(stopatZobs){
+    if(stop_at_Zobs){
       if(sum(dropnames==Zobs_id)==1){
         themat.Zobs.s = themat; cat("found clique with Zobs!\n")
         return(themat.Zobs.s)
@@ -144,12 +144,11 @@ run_test = function(Yobs,BImat,Zobs_id){
 
   Trand = apply(as.matrix(BImat[, -Zobs_cliqid]), 2, function(z) ate(z, Y.clique))
 
-  # pval = mean(Trand>=Tobs)
   reject = (one_sided_test(tobs=Tobs,tvals=Trand,alpha=0.05,tol=1e-14))
   reject
 }
 
-out_examplenetwork = function(numnodes){
+out_example_network = function(numnodes){
   # generate new network (3 clusters of 2D Gaussians)
   x = c(rnorm(numnodes*0.5,sd=0.1)+0.5,rnorm(numnodes*0.3,sd=0.075)+0.25,rnorm(numnodes*0.2,sd=0.075)+0.3)
   y = c(rnorm(250,sd=0.1)+0.5,rnorm(150,sd=0.075)+0.75,rnorm(100,sd=0.075)+0.3)
@@ -177,14 +176,14 @@ sparsify <- function(mat){
   mat
 }
 
-get_DZ2 = function(r,D,Z){
-  Dr = binarize_r2(r,D)
+out_DZ = function(r,D,Z){
+  Dr = binarize_r(r,D)
   Z = sparsify(Z)
   DZ = Dr%*%Z
   DZ
 }
 
-get_binaryDZ = function(DZ,direction){
+out_binaryDZ = function(DZ,direction){
   if(direction=='lt'){
     DZbin = (DZ>0)
   }
@@ -194,7 +193,7 @@ get_binaryDZ = function(DZ,direction){
   DZbin
 }
 
-binarize_r2 <- function(r,mat){
+binarize_r <- function(r,mat){
   # r is a distance metric, such as euclidean distance between street segments
   # every segment pair > r distance apartment will be zero.
   matnew = Matrix(0,dim(mat)[1],dim(mat)[2],sparse=TRUE)
@@ -202,10 +201,11 @@ binarize_r2 <- function(r,mat){
   colnames(matnew) = colnames(mat)
 
   matnew[mat<=r] <- 1
-  diag(matnew) <- -1e6 # this is key here .. focus hypothesis on untreated units only
+  diag(matnew) <- -1e10 # this is key here .. focus hypothesis on untreated units only
   matnew
 }
 
+#' Functions that returns difference in means between exposures \code{a} and \code{b}, coded as \code{1} and \code{-1}, respectively.
 ate = function(Z,Y){
   ind1 = which(Z==1)
   ind2 = which(Z==-1)
