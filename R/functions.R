@@ -70,14 +70,14 @@ out_pval = function(rtest_out, ret_pval, alpha) {
 }
 
 #' compute the observed outcome vector, given potential outcomes on the exposures
-get_Yobs = function(Z,ya,yb){
+out_Yobs = function(Z,ya,yb){
   Za = (Z==-1)
   Zb = (Z==1)
   y = ya*Za + yb*Zb
   y
 }
 
-get_clique = function(z.id,decom){
+out_clique = function(z.id,decom){
   for(ii in 1:length(decom)){
     if(sum(z.id==colnames(decom[[ii]]))){
       return(ii)
@@ -85,7 +85,7 @@ get_clique = function(z.id,decom){
   }
 }
 
-get_bicliquedecom = function(NEmat,Zobs_id,minr=50,minc=50,stopatZobs=FALSE){
+out_bicliquedecom = function(NEmat,Zobs_id,minr=50,minc=50,stopatZobs=FALSE){
   library(biclust)
 
   iremove = which(rowSums(NEmat!=0)==0)  # removes isolated units.
@@ -149,7 +149,7 @@ run_test = function(Yobs,BImat,Zobs_id){
   reject
 }
 
-create_network = function(numnodes){
+out_examplenetwork = function(numnodes){
   # generate new network (3 clusters of 2D Gaussians)
   x = c(rnorm(numnodes*0.5,sd=0.1)+0.5,rnorm(numnodes*0.3,sd=0.075)+0.25,rnorm(numnodes*0.2,sd=0.075)+0.3)
   y = c(rnorm(250,sd=0.1)+0.5,rnorm(150,sd=0.075)+0.75,rnorm(100,sd=0.075)+0.3)
@@ -209,19 +209,4 @@ ate = function(Z,Y){
   ind1 = which(Z==1)
   ind2 = which(Z==-1)
   mean(Y[ind1])-mean(Y[ind2])
-}
-
-one_sided_test = function(tobs, tvals, alpha, tol=1e-14) {
-  tvals = c(tobs,tvals)
-  srt = sort(tvals)
-  M = length(tvals)
-  k = ceiling(M * (1-alpha))
-  Tk = srt[k]
-  if(abs(tobs - Tk) < tol) {
-    # if tobs=Tk
-    ax = (M * alpha - sum(tvals > Tk)) / sum(abs(tvals - Tk) < tol)
-    return(runif(1) <= ax) ## randomize.
-  }
-
-  return(tobs > Tk)
 }

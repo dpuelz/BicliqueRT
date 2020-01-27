@@ -4,7 +4,7 @@ Title: Randomization-based Testing and Inference under Interference
 Version: 1.0
 Author: David Puelz
 Maintainer: David Puelz <David.Puelz@chicagobooth.edu>
-Description: Testing and inference of causal effects using clique-based randomization tests.  The tests condition on a clique of the null-exposure graph, allowing for complex and general interference patterns between units to be accounted for.
+Description: Testing of causal effects using clique-based randomization tests.  The tests condition on a clique of the null-exposure graph, allowing for complex and general interference patterns between units to be accounted for.  See https://arxiv.org/pdf/1910.10862.pdf.
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
