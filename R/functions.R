@@ -171,6 +171,7 @@ out_examplenetwork = function(numnodes){
   thepoints
 }
 
+#' Casts matrix \code{mat} into a sparse matrix.
 sparsify <- function(mat){
   mat = Matrix(mat,sparse=TRUE)
   mat
