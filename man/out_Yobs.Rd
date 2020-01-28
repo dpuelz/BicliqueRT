@@ -4,7 +4,19 @@
 \alias{out_Yobs}
 \title{Computes the observed outcome vector, given potential outcomes on the exposures}
 \usage{
-out_Yobs(Z, Y_a, Y_b)
+out_Yobs(z_a, z_b, Y_a, Y_b)
+}
+\arguments{
+\item{z_a}{A binary vector indicating which units are exposed to \code{a}.}
+
+\item{z_b}{A binary vector indicating which units are exposed to \code{b}.}
+
+\item{Y_a}{The potential outcome vector for all units under exposure \code{a}.}
+
+\item{Y_b}{The potential outcome vector for all units under exposure \code{b}.}
+}
+\value{
+A single observed outcome vector.
 }
 \description{
 Computes the observed outcome vector, given potential outcomes on the exposures

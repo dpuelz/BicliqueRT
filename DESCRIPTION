@@ -8,5 +8,5 @@ Description: Testing of causal effects using clique-based randomization tests.  
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
-Imports:biclust,Matrix,pbapply,lattice,grid,gridExtra
+Imports:stats,biclust,Matrix,pbapply,lattice,grid,gridExtra
 RoxygenNote: 7.0.2

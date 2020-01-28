@@ -2,10 +2,18 @@
 % Please edit documentation in R/functions.R
 \name{ate}
 \alias{ate}
-\title{Functions that returns difference in means between exposures \code{b} and \code{a}, coded as \code{1} and \code{-1}, respectively.}
+\title{Returns difference in means between exposures \code{b} and \code{a}, coded as \code{1} and \code{-1}, respectively.}
 \usage{
 ate(Z, Y)
 }
+\arguments{
+\item{Z}{The treatment vector}
+
+\item{Y}{The outcome vector}
+}
+\value{
+The differenence in means between exposure contrasts \code{b} and \code{a}
+}
 \description{
-Functions that returns difference in means between exposures \code{b} and \code{a}, coded as \code{1} and \code{-1}, respectively.
+Returns difference in means between exposures \code{b} and \code{a}, coded as \code{1} and \code{-1}, respectively.
 }

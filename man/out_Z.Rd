@@ -12,7 +12,7 @@ out_Z(pi, num_randomizations)
 \item{num_randomizations}{A \code{scalar} denoting the number of assignments desired.}
 }
 \value{
-\code{Z} (sparse binary matrix).
+\code{Z} (sparse binary matrix).  The first column is the observed assignmenht.
 }
 \description{
 Returns sparse matrix \code{Z} of dimension (number of units x number of randomizations, i.e. assignments.)
