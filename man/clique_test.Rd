@@ -29,3 +29,38 @@ A list of items summarizing the randomization test.
 \description{
 The main randomization test function.
 }
+\examples{
+# generated network - 3 clusters of 2D Gaussians
+# loads in the 500x500 matrix Dmat (see create_network function ...)
+# Dmat just encodes all pairwise Euclidean distances between network nodes, and
+# this is used to define the spillover hypothesis below.
+set.seed(1)
+thenetwork = out_example_network(500)
+D = thenetwork$D
+
+# simulation parameters
+num_randomizations = 5000
+radius = 0.01
+
+# First, construct \code{Z}, \code{Z_a}, \code{Z_b}.
+# Here, exposure \code{a} is an untreated within \code{radius} of a treated unit, and exposure \code{b} is an untreated unit at least \code{radius} distance away from all treated units.
+# Experimental design is Bernoulli with prob=0.2.
+# \code{a_threshold} A scalar denoting the threshold that triggers an exposure to \code{a}.  If exposure \code{a} is simply binary, i.e. whether or not unit j is exposed to \code{a}, then this value should be set to 1.
+# \code{b_threshold} A scalar denoting the threshold that triggers an exposure to \code{b}.  If exposure \code{b} is simply binary, i.e. whether or not unit j is exposed to \code{b}, then this value should be set to 1.
+Z = out_Z(pi=rep(0.2,dim(D)[1]),num_randomizations)
+D_a = sparsify((D<radius)); a_threshold = 1
+D_b = sparsify((D<radius)); b_threshold = 1
+
+Z_a = D_a\%*\%Z
+Z_a = sparsify((Z_a>=a_threshold))
+Z_b = D_b\%*\%Z
+Z_b = sparsify((Z_b<b_threshold))
+
+simulating an outcome vector
+Y_a = rnorm(dim(Z)[1])
+Y_b = Y_a + 0.2
+Y = out_Yobs(Z_a[,1],Z_b[,1],Y_a,Y_b)
+
+run the test
+CRT = clique_test(Y,Z,Z_a,Z_b,Zobs_id=1,minr=15,minc=15)
+}

@@ -1,6 +1,6 @@
 Package: CliqueRT
 Type: Package
-Title: Randomization-based Testing and Inference under Interference
+Title: Randomization-based Testing Causal Effects under General Interference
 Version: 1.0
 Author: David Puelz
 Maintainer: David Puelz <David.Puelz@chicagobooth.edu>

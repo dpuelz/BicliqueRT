@@ -255,7 +255,7 @@ ate = function(Z,Y){
 #' @param ... Other stuff ...
 #'
 #' @return A list of items summarizing the randomization test.
-#' @example
+#' @examples
 #' # generated network - 3 clusters of 2D Gaussians
 #' # loads in the 500x500 matrix Dmat (see create_network function ...)
 #' # Dmat just encodes all pairwise Euclidean distances between network nodes, and
@@ -289,7 +289,6 @@ ate = function(Z,Y){
 #'
 #' run the test
 #' CRT = clique_test(Y,Z,Z_a,Z_b,Zobs_id=1,minr=15,minc=15)
-#'
 clique_test = function(Y,Z,Z_a,Z_b,Zobs_id,minr,minc,...){
 
   # setting default values if they do not exist
