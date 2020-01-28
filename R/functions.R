@@ -69,12 +69,17 @@ out_pval = function(rtest_out, ret_pval, alpha) {
   return(two_sided_test(tobs, tvals, alpha = alpha))  # this test is less conservative.
 }
 
-#' compute the observed outcome vector, given potential outcomes on the exposures
+#' Computes the observed outcome vector, given potential outcomes on the exposures
 out_Yobs = function(Z,ya,yb){
   Za = (Z==-1)
   Zb = (Z==1)
   y = ya*Za + yb*Zb
   y
+}
+
+#' Constructs the null exposure graph based on binary matrices describing exposure conditions in the null hypothesis
+out_NEgraph = function(D_a,D_b){
+  return(NEgraph)
 }
 
 out_clique = function(z.id,decom){
@@ -85,34 +90,34 @@ out_clique = function(z.id,decom){
   }
 }
 
-out_biclique_decomposition = function(NEmat,Zobs_id,minr,minc,stop_at_Zobs=FALSE){
+out_clique_decomposition = function(NEgraph,Zobs_id,minr,minc,stop_at_Zobs=FALSE){
   library(biclust)
 
-  iremove = which(rowSums(NEmat!=0)==0)  # removes isolated units.
-  if(length(iremove)!=0){ NEmat = NEmat[-iremove,] }
+  iremove = which(rowSums(NEgraph!=0)==0)  # removes isolated units.
+  if(length(iremove)!=0){ NEgraph = NEgraph[-iremove,] }
   numb = 1
-  ncol = ncol(NEmat)
+  ncol = ncol(NEgraph)
 
   decomp = c()
-  new.NEmat = NEmat[,1:ncol]
-  numleft = ncol(new.NEmat)
-  oldnames = colnames(new.NEmat)
+  new.NEgraph = NEgraph[,1:ncol]
+  numleft = ncol(new.NEgraph)
+  oldnames = colnames(new.NEgraph)
   ii=1
 
   while(numleft>0){
     minc.new = min(minc,numleft)
-    bitest = biclust(new.NEmat, method=BCBimax(), minr, minc.new, number=numb)
-    bicliqMat = bicluster(new.NEmat,bitest)
+    bitest = biclust(new.NEgraph, method=BCBimax(), minr, minc.new, number=numb)
+    bicliqMat = bicluster(new.NEgraph,bitest)
     themat = bicliqMat$Bicluster1
     while(length(themat)==0){
       numleft=numleft-1
       minc.new = min(minc,numleft)
-      bitest = biclust(new.NEmat!=0, method=BCBimax(), minr, minc.new, number=numb)
-      bicliqMat = bicluster(new.NEmat,bitest)
+      bitest = biclust(new.NEgraph!=0, method=BCBimax(), minr, minc.new, number=numb)
+      bicliqMat = bicluster(new.NEgraph,bitest)
       themat = bicliqMat$Bicluster1
     }
     dropnames = colnames(themat)
-    oldnames = colnames(new.NEmat)
+    oldnames = colnames(new.NEgraph)
     drop.ind = match(dropnames,oldnames)
 
     if(stop_at_Zobs){
@@ -121,8 +126,8 @@ out_biclique_decomposition = function(NEmat,Zobs_id,minr,minc,stop_at_Zobs=FALSE
         return(themat.Zobs.s)
       }
     }
-    new.NEmat = new.NEmat[,-drop.ind]
-    numleft = dim(new.NEmat)[2]
+    new.NEgraph = new.NEgraph[,-drop.ind]
+    numleft = dim(new.NEgraph)[2]
     if(length(numleft)==0){ numleft=0 }
     decomp[[ii]] = themat
     cat("found clique",ii,'...\n')
@@ -131,7 +136,7 @@ out_biclique_decomposition = function(NEmat,Zobs_id,minr,minc,stop_at_Zobs=FALSE
   return(decomp)
 }
 
-run_test = function(Yobs,BImat,Zobs_id){
+clique_test = function(Yobs,BImat,Zobs_id){
   focalunits = as.numeric(rownames(BImat))
   cliqassign = as.numeric(colnames(BImat))
 
