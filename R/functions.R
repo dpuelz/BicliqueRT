@@ -70,16 +70,18 @@ out_pval = function(rtest_out, ret_pval, alpha) {
 }
 
 #' Computes the observed outcome vector, given potential outcomes on the exposures
-out_Yobs = function(Z,ya,yb){
+out_Yobs = function(Z,Y_a,Y_b){
   Za = (Z==-1)
   Zb = (Z==1)
-  y = ya*Za + yb*Zb
+  y = Y_a*Za + Y_b*Zb
   y
 }
 
 #' Returns sparse matrix \code{Z} of dimension (number of units x number of randomizations, i.e. assignments.)
+#'
 #' @param pi A \code{vector} of length number of units.
 #' @param num_randomizations A \code{scalar} denoting the number of assignments desired.
+#'
 #' @return \code{Z} (sparse binary matrix).
 out_Z = function(pi,num_randomizations){
   num_units = length(pi)
@@ -87,8 +89,19 @@ out_Z = function(pi,num_randomizations){
   Z
 }
 
-#' Constructs the null exposure graph based on binary matrices describing exposure conditions in the null hypothesis
-out_NEgraph = function(D_a,D_b,Z,exclude_treated=TRUE){
+#' One of the main functions for implementing the methodology.  Outputs the null exposure graph based on binary matrices describing exposure conditions in the null hypothesis.  The null hypothesis is represented as:
+#' H_0: Y_i(\code{a}) = Y_i(\code{b}) for all i,
+#' and states that potential outcomes are equal for all units exposed to either \code{a} or \code{b}.
+#'
+#' @param D_a A binary square matrix with the number of columns equal to the number of units.  Column i, row j of the matrix corresponds to whether a treated unit j exposes unit i to exposure \code{a}. See examples.
+#' @param D_b A binary square matrix with the number of columns equal to the number of units.  Column i, row j of the matrix corresponds to whether a treated unit j exposes unit i to exposure \code{b}. See examples.
+#' @param a_threshold A scalar denoting the threshold that triggers an exposure to \code{a}.  If exposure \code{a} is simply binary, i.e. whether or not unit j is exposed to \code{a}, then this value should be set to 1.
+#' @param b_threshold A scalar denoting the threshold that triggers an exposure to \code{b}.  If exposure \code{b} is simply binary, i.e. whether or not unit j is exposed to \code{b}, then this value should be set to 1.
+#' @param Z A binary matrix of dimension (number of units x number of randomizations, i.e. assignments.) storing the assignment vectors.
+#' @param exclude_treated A Boolean denoting whether or not treated units are considered in the hypothesis.  Default is TRUE.
+#'
+#' @return
+out_NEgraph = function(D_a,D_b,a_threshold,b_threshold,Z,exclude_treated=TRUE){
   # first, compute Z_a matrix
 
   # second, compute Z_b matrix
@@ -109,7 +122,6 @@ out_clique = function(z.id,decom){
 }
 
 out_clique_decomposition = function(NEgraph,Zobs_id,minr,minc,stop_at_Zobs=FALSE){
-  library(biclust)
 
   iremove = which(rowSums(NEgraph!=0)==0)  # removes isolated units.
   if(length(iremove)!=0){ NEgraph = NEgraph[-iremove,] }
@@ -172,7 +184,9 @@ clique_test = function(Yobs,BImat,Zobs_id){
 }
 
 #' Generates example two-dimensional network of 3 Gaussians.
+#'
 #' @param num_units The number of units in the network.
+#'
 #' @return A list of \code{D}, a square matrix of all pairwise Euclidean distances between units, and \code{thepoints}, a matrix of dimension \code{num_units} by 2 of coordinates of the generated network units. (binary).
 out_example_network = function(num_units){
 
@@ -230,7 +244,7 @@ binarize_r <- function(r,mat){
   matnew
 }
 
-#' Functions that returns difference in means between exposures \code{a} and \code{b}, coded as \code{1} and \code{-1}, respectively.
+#' Functions that returns difference in means between exposures \code{b} and \code{a}, coded as \code{1} and \code{-1}, respectively.
 ate = function(Z,Y){
   ind1 = which(Z==1)
   ind2 = which(Z==-1)

@@ -2,10 +2,30 @@
 % Please edit documentation in R/functions.R
 \name{out_NEgraph}
 \alias{out_NEgraph}
-\title{Constructs the null exposure graph based on binary matrices describing exposure conditions in the null hypothesis}
+\title{One of the main functions for implementing the methodology.  Outputs the null exposure graph based on binary matrices describing exposure conditions in the null hypothesis.  The null hypothesis is represented as:
+H_0: Y_i(\code{a}) = Y_i(\code{b}) for all i,
+and states that potential outcomes are equal for all units exposed to either \code{a} or \code{b}.}
 \usage{
-out_NEgraph(D_a, D_b)
+out_NEgraph(D_a, D_b, a_threshold, b_threshold, Z, exclude_treated = TRUE)
+}
+\arguments{
+\item{D_a}{A binary square matrix with the number of columns equal to the number of units.  Column i, row j of the matrix corresponds to whether a treated unit j exposes unit i to exposure \code{a}. See examples.}
+
+\item{D_b}{A binary square matrix with the number of columns equal to the number of units.  Column i, row j of the matrix corresponds to whether a treated unit j exposes unit i to exposure \code{b}. See examples.}
+
+\item{a_threshold}{A scalar denoting the threshold that triggers an exposure to \code{a}.  If exposure \code{a} is simply binary, i.e. whether or not unit j is exposed to \code{a}, then this value should be set to 1.}
+
+\item{b_threshold}{A scalar denoting the threshold that triggers an exposure to \code{b}.  If exposure \code{b} is simply binary, i.e. whether or not unit j is exposed to \code{b}, then this value should be set to 1.}
+
+\item{Z}{A binary matrix of dimension (number of units x number of randomizations, i.e. assignments.) storing the assignment vectors.}
+
+\item{exclude_treated}{A Boolean denoting whether or not treated units are considered in the hypothesis.  Default is TRUE.}
+}
+\value{
+
 }
 \description{
-Constructs the null exposure graph based on binary matrices describing exposure conditions in the null hypothesis
+One of the main functions for implementing the methodology.  Outputs the null exposure graph based on binary matrices describing exposure conditions in the null hypothesis.  The null hypothesis is represented as:
+H_0: Y_i(\code{a}) = Y_i(\code{b}) for all i,
+and states that potential outcomes are equal for all units exposed to either \code{a} or \code{b}.
 }

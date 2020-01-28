@@ -4,7 +4,7 @@
 \alias{out_Yobs}
 \title{Computes the observed outcome vector, given potential outcomes on the exposures}
 \usage{
-out_Yobs(Z, ya, yb)
+out_Yobs(Z, Y_a, Y_b)
 }
 \description{
 Computes the observed outcome vector, given potential outcomes on the exposures
