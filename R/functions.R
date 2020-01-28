@@ -70,10 +70,15 @@ out_pval = function(rtest_out, ret_pval, alpha) {
 }
 
 #' Computes the observed outcome vector, given potential outcomes on the exposures
-out_Yobs = function(Z,Y_a,Y_b){
-  Za = (Z==-1)
-  Zb = (Z==1)
-  y = Y_a*Za + Y_b*Zb
+#'
+#' @param z_a A binary vector indicating which units are exposed to \code{a}.
+#' @param z_b A binary vector indicating which units are exposed to \code{b}.
+#' @param Y_a The potential outcome vector for all units under exposure \code{a}.
+#' @param Y_b The potential outcome vector for all units under exposure \code{b}.
+#'
+#' @return A single observed outcome vector.
+out_Yobs = function(z_a,z_b,Y_a,Y_b){
+  y = Y_a*z_a + Y_b*z_b
   y
 }
 
@@ -82,46 +87,64 @@ out_Yobs = function(Z,Y_a,Y_b){
 #' @param pi A \code{vector} of length number of units.
 #' @param num_randomizations A \code{scalar} denoting the number of assignments desired.
 #'
-#' @return \code{Z} (sparse binary matrix).
+#' @return \code{Z} (sparse binary matrix).  The first column is the observed assignmenht.
 out_Z = function(pi,num_randomizations){
   num_units = length(pi)
-  Z = Matrix(rbinom(num_randomizations*num_units,1,prob=pi),nrow=samsize,ncol=num_randomizations,sparse=TRUE)
+  Z = Matrix(rbinom(num_randomizations*num_units,1,prob=pi),nrow=num_units,ncol=num_randomizations,sparse=TRUE)
   Z
 }
 
-#' One of the main functions for implementing the methodology.  Outputs the null exposure graph based on binary matrices describing exposure conditions in the null hypothesis.  The null hypothesis is represented as:
+#' One of the main functions for implementing the methodology.  Outputs the null-exposure graph based on binary matrices describing exposure conditions in the null hypothesis.  The null hypothesis is represented as:
 #' H_0: Y_i(\code{a}) = Y_i(\code{b}) for all i,
 #' and states that potential outcomes are equal for all units exposed to either \code{a} or \code{b}.
 #'
-#' @param D_a A binary square matrix with the number of columns equal to the number of units.  Column i, row j of the matrix corresponds to whether a treated unit j exposes unit i to exposure \code{a}. See examples.
-#' @param D_b A binary square matrix with the number of columns equal to the number of units.  Column i, row j of the matrix corresponds to whether a treated unit j exposes unit i to exposure \code{b}. See examples.
-#' @param a_threshold A scalar denoting the threshold that triggers an exposure to \code{a}.  If exposure \code{a} is simply binary, i.e. whether or not unit j is exposed to \code{a}, then this value should be set to 1.
-#' @param b_threshold A scalar denoting the threshold that triggers an exposure to \code{b}.  If exposure \code{b} is simply binary, i.e. whether or not unit j is exposed to \code{b}, then this value should be set to 1.
+#' @param Z_a A binary matrix with dimension (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{a} under assignment j.  Please see example.
+#' @param Z_b A binary matrix with (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{b} under assignment j.  Please see example.
 #' @param Z A binary matrix of dimension (number of units x number of randomizations, i.e. assignments.) storing the assignment vectors.
-#' @param exclude_treated A Boolean denoting whether or not treated units are considered in the hypothesis.  Default is TRUE.
+#' @param exclude_treated A Boolean denoting whether or not treated units are considered in the hypothesis.  Default is \code{TRUE}.
 #'
-#' @return
-out_NEgraph = function(D_a,D_b,a_threshold,b_threshold,Z,exclude_treated=TRUE){
-  # first, compute Z_a matrix
+#' @return \code{NEgraph}, a matrix of dimension (number of units x number of randomizations, i.e. assignments.).  Row i, column j of the matrix either equals -1 (unit i is exposed to \code{a} under assignment j), 1 (unit i is exposed to \code{b} under assignment j), 0 (unit i is neither exposed to \code{a} nor \code{b} under assignment j).
+out_NEgraph = function(Z_a,Z_b,Z,exclude_treated=TRUE){
+  Z_a = sparsify(Z_a)
+  Z_b = sparsify(Z_b)
+  Z = sparsify(Z)
 
-  # second, compute Z_b matrix
-
-  # if exclude_treated==TRUE, then component multiply D_a, D_b by !Z.
+  # if exclude_treated==TRUE, then component multiply Z_a, Z_b by !Z.
+  if(exclude_treated){
+    Z_a = Z_a*(!Z)
+    Z_b = Z_b*(!Z)
+  }
 
   # construct NEgraph from the exposures matrices
+  NEgraph = Matrix(0,nrow=dim(Z_a)[1],ncol=dim(Z_a)[2],sparse=TRUE)
+  NEgraph[Z_a==1] <- -1
+  NEgraph[Z_b==1] <- 1
 
-  return(NEgraph)
+  # return
+  rownames(NEgraph) = 1:nrow(NEgraph)
+  colnames(NEgraph) = 1:ncol(NEgraph)
+  as.matrix(NEgraph)
 }
 
-out_clique = function(z.id,decom){
+
+out_clique = function(Zobs_id,decom){
   for(ii in 1:length(decom)){
-    if(sum(z.id==colnames(decom[[ii]]))){
-      return(ii)
+    if(sum(Zobs_id==colnames(decom[[ii]]))){
+      return(as.matrix(decom[ii][[1]]))
     }
   }
 }
 
-out_clique_decomposition = function(NEgraph,Zobs_id,minr,minc,stop_at_Zobs=FALSE){
+#' One of the main functions for implementing the methodology. Outputs a clique decomposition of the null-exposure graph.  Specifically, the resulting decomposition paritions the assignment space, while the unit space may overlap.
+#'
+#' @param NEgraph The null-exposure graph object, see \code{out_NEgraph}.
+#' @param Zobs_id The index location of the observed assignment vector.
+#' @param minr The minimum number of focal units included in the cliques (algorithm runtime is sensitive to this value).
+#' @param minc The minimum number of focal assignment included in the cliques (algorithm runtime is sensitive to this value).
+#' @param stop_at_Zobs A Boolean indicating whether the decomposition algorithm should stop when the clique containing the observed assignment is found.  Default value is \code{TRUE}.
+#'
+#' @return If \code{stop_at_Zobs} is \code{TRUE}, a matrix representing the clique to condition upon. If \code{stop_at_Zobs} is \code{FALSE}, a list containing the clique decomposition of the null-exposure graph.
+out_clique_decomposition = function(NEgraph,Zobs_id,minr,minc,stop_at_Zobs=TRUE){
 
   iremove = which(rowSums(NEgraph!=0)==0)  # removes isolated units.
   if(length(iremove)!=0){ NEgraph = NEgraph[-iremove,] }
@@ -152,7 +175,7 @@ out_clique_decomposition = function(NEgraph,Zobs_id,minr,minc,stop_at_Zobs=FALSE
 
     if(stop_at_Zobs){
       if(sum(dropnames==Zobs_id)==1){
-        themat.Zobs.s = themat; cat("found clique with Zobs!\n")
+        themat.Zobs.s = themat; cat("\r","found clique with Zobs!")
         return(themat.Zobs.s)
       }
     }
@@ -160,27 +183,47 @@ out_clique_decomposition = function(NEgraph,Zobs_id,minr,minc,stop_at_Zobs=FALSE
     numleft = dim(new.NEgraph)[2]
     if(length(numleft)==0){ numleft=0 }
     decomp[[ii]] = themat
-    cat("found clique",ii,'...\n')
+    cat("\r","found clique",ii,'...')
     ii=ii+1
   }
   return(decomp)
 }
 
-clique_test = function(Yobs,BImat,Zobs_id){
-  focalunits = as.numeric(rownames(BImat))
-  cliqassign = as.numeric(colnames(BImat))
+clique_test = function(Y,Z,Z_a,Z_b,Zobs_id,minr,minc,...){
+
+  # setting default values if they do not exist
+  if(!exists("exclude_treated")){ exclude_treated=TRUE }
+  if(!exists("stop_at_Zobs")){ stop_at_Zobs=TRUE }
+  if(!exists("ret_pval")){ ret_pval=TRUE }
+
+  # make the null-exposure graph
+  cat("construct the null-exposure graph ... \n")
+  NEgraph = out_NEgraph(Z_a,Z_b,Z,exclude_treated)
+
+  # decompose the null-exposure graph
+  cat("decompose the null-exposure graph ... \n")
+  decom = out_clique_decomposition(NEgraph,Zobs_id,minr,minc,stop_at_Zobs)
+  if(stop_at_Zobs){ conditional_clique = decom }
+  if(!stop_at_Zobs){ conditional_clique = out_clique(Zobs_id,decom) }
+
+  focal_units = as.numeric(rownames(conditional_clique))
+  focal_assignments = as.numeric(colnames(conditional_clique))
 
   # restrict Y to clique
-  Y.clique = Yobs[focalunits]
+  Y.clique = Y[focal_units]
 
-  # test statistics
-  Zobs_cliqid = which(Zobs_id==cliqassign)
-  Tobs = ate(BImat[, Zobs_cliqid], Y.clique)
+  # run the test
+  cat("\n")
+  cat("run the clique-based randomization test ... \n")
+  Zobs_cliqid = which(Zobs_id==focal_assignments)
+  tobs = ate(conditional_clique[, Zobs_cliqid], Y.clique)
+  tvals = apply(as.matrix(conditional_clique[, -Zobs_cliqid]), 2, function(z) ate(z, Y.clique))
+  rtest_out = list(tobs=tobs,tvals=tvals)
+  decision = out_pval(rtest_out,ret_pval,alpha=0.05)
 
-  Trand = apply(as.matrix(BImat[, -Zobs_cliqid]), 2, function(z) ate(z, Y.clique))
-
-  reject = (one_sided_test(tobs=Tobs,tvals=Trand,alpha=0.05,tol=1e-14))
-  reject
+  # organize into return list
+  retlist = list(decision=decision,ret_pval=ret_pval,tobs=tobs,tvals=tvals,focal_units=focal_units,focal_assignments=focal_assignments,NEgraph=NEgraph)
+  retlist
 }
 
 #' Generates example two-dimensional network of 3 Gaussians.
@@ -210,41 +253,21 @@ out_example_network = function(num_units){
 }
 
 #' Casts matrix \code{mat} into a sparse matrix.
+#'
+#' @param mat A matrix to be sparsified
+#'
+#' @return  A sparse matrix
 sparsify <- function(mat){
   mat = Matrix(mat,sparse=TRUE)
   mat
 }
 
-out_DZ = function(r,D,Z){
-  Dr = binarize_r(r,D)
-  Z = sparsify(Z)
-  DZ = Dr%*%Z
-  DZ
-}
-
-out_binaryDZ = function(DZ,direction){
-  if(direction=='lt'){
-    DZbin = (DZ>0)
-  }
-  if(direction=='gt'){
-    DZbin = (DZ==0)
-  }
-  DZbin
-}
-
-binarize_r <- function(r,mat){
-  # r is a distance metric, such as euclidean distance between street segments
-  # every segment pair > r distance apartment will be zero.
-  matnew = Matrix(0,dim(mat)[1],dim(mat)[2],sparse=TRUE)
-  rownames(matnew) = rownames(mat)
-  colnames(matnew) = colnames(mat)
-
-  matnew[mat<=r] <- 1
-  diag(matnew) <- -1e10 # this is key here .. focus hypothesis on untreated units only
-  matnew
-}
-
-#' Functions that returns difference in means between exposures \code{b} and \code{a}, coded as \code{1} and \code{-1}, respectively.
+#' Returns difference in means between exposures \code{b} and \code{a}, coded as \code{1} and \code{-1}, respectively.
+#'
+#' @param Z The treatment vector
+#' @param Y The outcome vector
+#'
+#' @return The differenence in means between exposure contrasts \code{b} and \code{a}
 ate = function(Z,Y){
   ind1 = which(Z==1)
   ind2 = which(Z==-1)
