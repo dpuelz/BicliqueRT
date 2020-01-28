@@ -78,7 +78,15 @@ out_Yobs = function(Z,ya,yb){
 }
 
 #' Constructs the null exposure graph based on binary matrices describing exposure conditions in the null hypothesis
-out_NEgraph = function(D_a,D_b){
+out_NEgraph = function(D_a,D_b,Z,exclude_treated=TRUE){
+  # first, compute Z_a matrix
+
+  # second, compute Z_b matrix
+
+  # if exclude_treated==TRUE, then component multiply D_a, D_b by !Z.
+
+  # construct NEgraph from the exposures matrices
+
   return(NEgraph)
 }
 
