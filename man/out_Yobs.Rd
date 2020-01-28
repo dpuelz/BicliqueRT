@@ -2,10 +2,10 @@
 % Please edit documentation in R/functions.R
 \name{out_Yobs}
 \alias{out_Yobs}
-\title{compute the observed outcome vector, given potential outcomes on the exposures}
+\title{Computes the observed outcome vector, given potential outcomes on the exposures}
 \usage{
 out_Yobs(Z, ya, yb)
 }
 \description{
-compute the observed outcome vector, given potential outcomes on the exposures
+Computes the observed outcome vector, given potential outcomes on the exposures
 }
