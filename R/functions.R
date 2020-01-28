@@ -77,6 +77,16 @@ out_Yobs = function(Z,ya,yb){
   y
 }
 
+#' Returns sparse matrix \code{Z} of dimension (number of units x number of randomizations, i.e. assignments.)
+#' @param pi A \code{vector} of length number of units.
+#' @param num_randomizations A \code{scalar} denoting the number of assignments desired.
+#' @return \code{Z} (sparse binary matrix).
+out_Z = function(pi,num_randomizations){
+  num_units = length(pi)
+  Z = Matrix(rbinom(num_randomizations*num_units,1,prob=pi),nrow=samsize,ncol=num_randomizations,sparse=TRUE)
+  Z
+}
+
 #' Constructs the null exposure graph based on binary matrices describing exposure conditions in the null hypothesis
 out_NEgraph = function(D_a,D_b,Z,exclude_treated=TRUE){
   # first, compute Z_a matrix
@@ -161,10 +171,14 @@ clique_test = function(Yobs,BImat,Zobs_id){
   reject
 }
 
-out_example_network = function(numnodes){
+#' Generates example two-dimensional network of 3 Gaussians.
+#' @param num_units The number of units in the network.
+#' @return A list of \code{D}, a square matrix of all pairwise Euclidean distances between units, and \code{thepoints}, a matrix of dimension \code{num_units} by 2 of coordinates of the generated network units. (binary).
+out_example_network = function(num_units){
+
   # generate new network (3 clusters of 2D Gaussians)
-  x = c(rnorm(numnodes*0.5,sd=0.1)+0.5,rnorm(numnodes*0.3,sd=0.075)+0.25,rnorm(numnodes*0.2,sd=0.075)+0.3)
-  y = c(rnorm(250,sd=0.1)+0.5,rnorm(150,sd=0.075)+0.75,rnorm(100,sd=0.075)+0.3)
+  x = c(rnorm(num_units*0.5,sd=0.1)+0.5,rnorm(num_units*0.3,sd=0.075)+0.25,rnorm(num_units*0.2,sd=0.075)+0.3)
+  y = c(rnorm(num_units*0.5,sd=0.1)+0.5,rnorm(num_units*0.3,sd=0.075)+0.75,rnorm(num_units*0.2,sd=0.075)+0.3)
   thepoints = cbind(x,y)
 
   # distance matrix
@@ -178,9 +192,7 @@ out_example_network = function(numnodes){
       Dmat[ii,jj] = eucdist(thepoints[ii,],thepoints[jj,])
     }
   }
-
-  save(Dmat,file=paste('Dsim_nodes=',numnodes,'.RData',sep=''))
-  thepoints
+  return(list(D=Dmat,thepoints=thepoints))
 }
 
 #' Casts matrix \code{mat} into a sparse matrix.
