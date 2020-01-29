@@ -1,12 +1,12 @@
 Package: CliqueRT
 Type: Package
-Title: Randomization-based Testing Causal Effects under General Interference
+Title: Randomization-Based Testing of Causal Effects under General Interference
 Version: 1.0
 Author: David Puelz
 Maintainer: David Puelz <David.Puelz@chicagobooth.edu>
-Description: Testing of causal effects using clique-based randomization tests.  The tests condition on a clique of the null-exposure graph, allowing for complex and general interference patterns between units to be accounted for.  See https://arxiv.org/pdf/1910.10862.pdf.
+Description: Testing of causal effects using clique-based randomization tests.  The tests condition on a clique of the null-exposure graph, allowing for complex and general interference patterns between units to be accounted for in an exact test. Please see the manuscript <arXiv:1910.10862>.
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
-Imports:stats,biclust,Matrix,pbapply,lattice,grid,gridExtra
+Imports:biclust,Matrix,stats,lattice
 RoxygenNote: 7.0.2

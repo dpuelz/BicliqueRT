@@ -1,3 +1,92 @@
+#' The main randomization test function.
+#'
+#' @param Y The observed outcome vector.
+#' @param Z A binary matrix of dimension (number of units x number of randomizations, i.e. assignments.) storing the assignment vectors.
+#' @param Z_a A binary matrix with dimension (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{a} under assignment j.  Please see example.
+#' @param Z_b A binary matrix with (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{b} under assignment j.  Please see example.
+#' @param Zobs_id The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.
+#' @param minr The minimum number of focal units included in the cliques (algorithm runtime is sensitive to this value).
+#' @param minc The minimum number of focal assignment included in the cliques (algorithm runtime is sensitive to this value).
+#' @param ... Other stuff ...
+#'
+#' @return A list of items summarizing the randomization test.
+#' @examples
+#' # generated network - 3 clusters of 2D Gaussians
+#' # loads in the 500x500 matrix Dmat
+#' # Dmat just encodes all pairwise Euclidean distances between network nodes, and
+#' # this is used to define the spillover hypothesis below.
+#' library(CliqueRT)
+#' set.seed(1)
+#' thenetwork = out_example_network(500)
+#' D = thenetwork$D
+#'
+#' # simulation parameters
+#' num_randomizations = 5000
+#' radius = 0.01
+#'
+#' # First, construct Z, Z_a, Z_b.
+#' # Here, exposure a is an untreated within radius of a treated unit, and exposure b
+#' # is an untreated unit at least radius distance away from all treated units.
+#' # Experimental design is Bernoulli with prob=0.2.
+#' # a_threshold is a scalar denoting the threshold that triggers an exposure to a.  If exposure a
+#' # is simply binary, i.e. whether or not unit j is exposed to a, then this value should be set to 1.
+#' # b_threshold is a scalar denoting the threshold that triggers an exposure to b.  If exposure b
+#' # is simply binary, i.e. whether or not unit j is exposed to b, then this value should be set to 1.
+#' Z = out_Z(pi=rep(0.2,dim(D)[1]),num_randomizations)
+#' D_a = sparsify((D<radius)); a_threshold = 1
+#' D_b = sparsify((D<radius)); b_threshold = 1
+#'
+#' Z_a = D_a%*%Z
+#' Z_a = sparsify((Z_a>=a_threshold))
+#' Z_b = D_b%*%Z
+#' Z_b = sparsify((Z_b<b_threshold))
+#'
+#' # simulating an outcome vector
+#' Y_a = rnorm(dim(Z)[1])
+#' Y_b = Y_a + 0.2
+#' Y = out_Yobs(Z_a[,1],Z_b[,1],Y_a,Y_b)
+#'
+#' # run the test
+#' CRT = clique_test(Y,Z,Z_a,Z_b,Zobs_id=1,minr=15,minc=15)
+#' @export
+clique_test = function(Y,Z,Z_a,Z_b,Zobs_id,minr,minc,...){
+
+  # setting default values if they do not exist
+  if(!exists("exclude_treated")){ exclude_treated=TRUE }
+  if(!exists("stop_at_Zobs")){ stop_at_Zobs=TRUE }
+  if(!exists("ret_pval")){ ret_pval=TRUE }
+
+  # make the null-exposure graph
+  cat("construct the null-exposure graph ... \n")
+  NEgraph = out_NEgraph(Z_a,Z_b,Z,exclude_treated)
+
+  # decompose the null-exposure graph
+  cat("decompose the null-exposure graph ... \n")
+  decomp = out_clique_decomposition(NEgraph,Zobs_id,minr,minc,stop_at_Zobs)
+  if(stop_at_Zobs){ conditional_clique = decomp }
+  if(!stop_at_Zobs){ conditional_clique = out_clique(Zobs_id,decomp) }
+
+  focal_units = as.numeric(rownames(conditional_clique))
+  focal_assignments = as.numeric(colnames(conditional_clique))
+
+  # restrict Y to clique
+  Y.clique = Y[focal_units]
+
+  # run the test
+  cat("\n")
+  cat("run the clique-based randomization test ... \n")
+  Zobs_cliqid = which(Zobs_id==focal_assignments)
+  tobs = ate(conditional_clique[, Zobs_cliqid], Y.clique)
+  tvals = apply(as.matrix(conditional_clique[, -Zobs_cliqid]), 2, function(z) ate(z, Y.clique))
+  rtest_out = list(tobs=tobs,tvals=tvals)
+  decision = out_pval(rtest_out,ret_pval,alpha=0.05)
+
+  # organize into return list
+  retlist = list(decision=decision,ret_pval=ret_pval,tobs=tobs,tvals=tvals,focal_units=focal_units,focal_assignments=focal_assignments,NEgraph=NEgraph)
+  retlist
+}
+
+
 #' One-sided testing
 #'
 #' Decides to reject or not based on observed test statistic value \code{tobs} and randomization values \code{tvals}.
@@ -11,6 +100,7 @@
 #' when there are very few randomization values.
 #' @return Test decision (binary).
 #' @seealso Testing Statistical Hypotheses (Ch. 15, Lehman and Romano, 2006)
+#' @export
 one_sided_test = function(tobs, tvals, alpha, tol=1e-14) {
   srt = sort(tvals)
   M = length(tvals)
@@ -37,6 +127,7 @@ one_sided_test = function(tobs, tvals, alpha, tol=1e-14) {
 #'
 #' @return Test decision (binary).
 #' @seealso Testing Statistical Hypotheses (Ch. 15, Lehman and Romano, 2006)
+#' @export
 two_sided_test = function(tobs, tvals, alpha) {
   m1 = one_sided_test(tobs, tvals, alpha=alpha/2)
   m2 = one_sided_test(-tobs, -tvals, alpha=alpha/2) # only one can be 1.
@@ -52,6 +143,7 @@ two_sided_test = function(tobs, tvals, alpha) {
 #' @param alpha Desired test level (from 0 to 1).
 #' @return Binary decision if \code{ret_pval} is TRUE, or the p-value otherwise.
 #' @details Returns 1 if the test rejects, 0 otherwise.
+#' @export
 out_pval = function(rtest_out, ret_pval, alpha) {
   tobs = rtest_out$tobs
   tvals = c(rtest_out$tvals)
@@ -77,6 +169,7 @@ out_pval = function(rtest_out, ret_pval, alpha) {
 #' @param Y_b The potential outcome vector for all units under exposure \code{b}.
 #'
 #' @return A single observed outcome vector.
+#' @export
 out_Yobs = function(z_a,z_b,Y_a,Y_b){
   y = Y_a*z_a + Y_b*z_b
   y
@@ -88,6 +181,7 @@ out_Yobs = function(z_a,z_b,Y_a,Y_b){
 #' @param num_randomizations A \code{scalar} denoting the number of assignments desired.
 #'
 #' @return \code{Z} (sparse binary matrix).  The first column is the observed assignmenht.
+#' @export
 out_Z = function(pi,num_randomizations){
   num_units = length(pi)
   Z = Matrix(rbinom(num_randomizations*num_units,1,prob=pi),nrow=num_units,ncol=num_randomizations,sparse=TRUE)
@@ -104,6 +198,7 @@ out_Z = function(pi,num_randomizations){
 #' @param exclude_treated A Boolean denoting whether or not treated units are considered in the hypothesis.  Default is \code{TRUE}.
 #'
 #' @return \code{NEgraph}, a matrix of dimension (number of units x number of randomizations, i.e. assignments.).  Row i, column j of the matrix either equals -1 (unit i is exposed to \code{a} under assignment j), 1 (unit i is exposed to \code{b} under assignment j), 0 (unit i is neither exposed to \code{a} nor \code{b} under assignment j).
+#' @export
 out_NEgraph = function(Z_a,Z_b,Z,exclude_treated=TRUE){
   Z_a = sparsify(Z_a)
   Z_b = sparsify(Z_b)
@@ -132,6 +227,7 @@ out_NEgraph = function(Z_a,Z_b,Z,exclude_treated=TRUE){
 #' @param decomp A list containing the clique decomposition of the null-exposure graph.
 #'
 #' @return The clique to condition on in the randomization test.
+#' @export
 out_clique = function(Zobs_id,decomp){
   for(ii in 1:length(decomp)){
     if(sum(Zobs_id==colnames(decomp[[ii]]))){
@@ -149,6 +245,7 @@ out_clique = function(Zobs_id,decomp){
 #' @param stop_at_Zobs A Boolean indicating whether the decomposition algorithm should stop when the clique containing the observed assignment is found.  Default value is \code{TRUE}.
 #'
 #' @return If \code{stop_at_Zobs} is \code{TRUE}, a matrix representing the clique to condition upon. If \code{stop_at_Zobs} is \code{FALSE}, a list containing the clique decomposition of the null-exposure graph.
+#' @export
 out_clique_decomposition = function(NEgraph,Zobs_id,minr,minc,stop_at_Zobs=TRUE){
 
   iremove = which(rowSums(NEgraph!=0)==0)  # removes isolated units.
@@ -200,6 +297,7 @@ out_clique_decomposition = function(NEgraph,Zobs_id,minr,minc,stop_at_Zobs=TRUE)
 #' @param num_units The number of units in the network.
 #'
 #' @return A list of \code{D}, a square matrix of all pairwise Euclidean distances between units, and \code{thepoints}, a matrix of dimension \code{num_units} by 2 of coordinates of the generated network units. (binary).
+#' @export
 out_example_network = function(num_units){
 
   # generate new network (3 clusters of 2D Gaussians)
@@ -226,6 +324,7 @@ out_example_network = function(num_units){
 #' @param mat A matrix to be sparsified
 #'
 #' @return  A sparse matrix
+#' @export
 sparsify <- function(mat){
   mat = Matrix(mat,sparse=TRUE)
   mat
@@ -237,91 +336,10 @@ sparsify <- function(mat){
 #' @param Y The outcome vector
 #'
 #' @return The differenence in means between exposure contrasts \code{b} and \code{a}
+#' @export
 ate = function(Z,Y){
   ind1 = which(Z==1)
   ind2 = which(Z==-1)
   mean(Y[ind1])-mean(Y[ind2])
 }
 
-#' The main randomization test function.
-#'
-#' @param Y The observed outcome vector.
-#' @param Z A binary matrix of dimension (number of units x number of randomizations, i.e. assignments.) storing the assignment vectors.
-#' @param Z_a A binary matrix with dimension (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{a} under assignment j.  Please see example.
-#' @param Z_b A binary matrix with (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{b} under assignment j.  Please see example.
-#' @param Zobs_id The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.
-#' @param minr The minimum number of focal units included in the cliques (algorithm runtime is sensitive to this value).
-#' @param minc The minimum number of focal assignment included in the cliques (algorithm runtime is sensitive to this value).
-#' @param ... Other stuff ...
-#'
-#' @return A list of items summarizing the randomization test.
-#' @examples
-#' # generated network - 3 clusters of 2D Gaussians
-#' # loads in the 500x500 matrix Dmat (see create_network function ...)
-#' # Dmat just encodes all pairwise Euclidean distances between network nodes, and
-#' # this is used to define the spillover hypothesis below.
-#' set.seed(1)
-#' thenetwork = out_example_network(500)
-#' D = thenetwork$D
-#'
-#' # simulation parameters
-#' num_randomizations = 5000
-#' radius = 0.01
-#'
-#' # First, construct \code{Z}, \code{Z_a}, \code{Z_b}.
-#' # Here, exposure \code{a} is an untreated within \code{radius} of a treated unit, and exposure \code{b} is an untreated unit at least \code{radius} distance away from all treated units.
-#' # Experimental design is Bernoulli with prob=0.2.
-#' # \code{a_threshold} A scalar denoting the threshold that triggers an exposure to \code{a}.  If exposure \code{a} is simply binary, i.e. whether or not unit j is exposed to \code{a}, then this value should be set to 1.
-#' # \code{b_threshold} A scalar denoting the threshold that triggers an exposure to \code{b}.  If exposure \code{b} is simply binary, i.e. whether or not unit j is exposed to \code{b}, then this value should be set to 1.
-#' Z = out_Z(pi=rep(0.2,dim(D)[1]),num_randomizations)
-#' D_a = sparsify((D<radius)); a_threshold = 1
-#' D_b = sparsify((D<radius)); b_threshold = 1
-#'
-#' Z_a = D_a%*%Z
-#' Z_a = sparsify((Z_a>=a_threshold))
-#' Z_b = D_b%*%Z
-#' Z_b = sparsify((Z_b<b_threshold))
-#'
-#' simulating an outcome vector
-#' Y_a = rnorm(dim(Z)[1])
-#' Y_b = Y_a + 0.2
-#' Y = out_Yobs(Z_a[,1],Z_b[,1],Y_a,Y_b)
-#'
-#' run the test
-#' CRT = clique_test(Y,Z,Z_a,Z_b,Zobs_id=1,minr=15,minc=15)
-clique_test = function(Y,Z,Z_a,Z_b,Zobs_id,minr,minc,...){
-
-  # setting default values if they do not exist
-  if(!exists("exclude_treated")){ exclude_treated=TRUE }
-  if(!exists("stop_at_Zobs")){ stop_at_Zobs=TRUE }
-  if(!exists("ret_pval")){ ret_pval=TRUE }
-
-  # make the null-exposure graph
-  cat("construct the null-exposure graph ... \n")
-  NEgraph = out_NEgraph(Z_a,Z_b,Z,exclude_treated)
-
-  # decompose the null-exposure graph
-  cat("decompose the null-exposure graph ... \n")
-  decomp = out_clique_decomposition(NEgraph,Zobs_id,minr,minc,stop_at_Zobs)
-  if(stop_at_Zobs){ conditional_clique = decomp }
-  if(!stop_at_Zobs){ conditional_clique = out_clique(Zobs_id,decomp) }
-
-  focal_units = as.numeric(rownames(conditional_clique))
-  focal_assignments = as.numeric(colnames(conditional_clique))
-
-  # restrict Y to clique
-  Y.clique = Y[focal_units]
-
-  # run the test
-  cat("\n")
-  cat("run the clique-based randomization test ... \n")
-  Zobs_cliqid = which(Zobs_id==focal_assignments)
-  tobs = ate(conditional_clique[, Zobs_cliqid], Y.clique)
-  tvals = apply(as.matrix(conditional_clique[, -Zobs_cliqid]), 2, function(z) ate(z, Y.clique))
-  rtest_out = list(tobs=tobs,tvals=tvals)
-  decision = out_pval(rtest_out,ret_pval,alpha=0.05)
-
-  # organize into return list
-  retlist = list(decision=decision,ret_pval=ret_pval,tobs=tobs,tvals=tvals,focal_units=focal_units,focal_assignments=focal_assignments,NEgraph=NEgraph)
-  retlist
-}
