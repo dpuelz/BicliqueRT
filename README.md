@@ -7,7 +7,7 @@ To use, first install devtools:
 ```
 install.packages("devtools")
 ```
-and then, install package:
+and then, install the package:
 ```
 library(devtools)
 install.packages("dpuelz/CliqueRT")
