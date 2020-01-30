@@ -10,6 +10,6 @@ install.packages("devtools")
 and then, install the package:
 ```R
 library(devtools)
-install.packages("dpuelz/CliqueRT")
+install_github("dpuelz/CliqueRT")
 ```
 
