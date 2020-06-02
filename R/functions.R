@@ -53,7 +53,7 @@ clique_test = function(Y,Z,Z_a,Z_b,Zobs_id,minr,minc,...){
 
   # setting default values if they do not exist
   if(!exists("exclude_treated")){ exclude_treated=TRUE }
-  if(!exists("stop_at_Zobs")){ stop_at_Zobs=TRUE }
+  if(!exists("stop_at_Zobs")){ stop_at_Zobs=FALSE }
   if(!exists("ret_pval")){ ret_pval=TRUE }
 
   # make the null-exposure graph
