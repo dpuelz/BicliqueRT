@@ -11,6 +11,7 @@
 #'
 #' @return A list of items summarizing the randomization test.
 #' @examples
+#' # Spatial interference
 #' # generated network - 3 clusters of 2D Gaussians
 #' # loads in the 500x500 matrix Dmat
 #' # Dmat just encodes all pairwise Euclidean distances between network nodes, and
@@ -48,6 +49,28 @@
 #'
 #' # run the test
 #' CRT = clique_test(Y,Z,Z_a,Z_b,Zobs_id=1,minr=15,minc=15)
+#' 
+#' # Clustered interference
+#' # simulation parameters
+#' N = 2000
+#' K = 500
+#' Zobs_id = 1
+#' 
+#' # generate clustered structure
+#' library(Matrix)
+#' library(biclust)
+#' set.seed(1)
+#' Zprime_mat = out_Zprime(N, K, numrand=1000)
+#' Z = Zprime_mat==2
+#' Z_a = Zprime_mat==1
+#' Z_b = Zprime_mat==0
+#' 
+#' # simulate an outcome vector
+#' simdat = out_bassefeller(N, K, Zprime_mat[, Zobs_id],tau_main = 0.4)
+#' Yobs = simdat$Yobs
+#' 
+#' # run the test
+#' CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, minr = 20, minc = 20)
 #' @export
 clique_test = function(Y,Z,Z_a,Z_b,Zobs_id,minr,minc,...){
 
@@ -342,4 +365,160 @@ ate = function(Z,Y){
   ind2 = which(Z==-1)
   mean(Y[ind1])-mean(Y[ind2])
 }
+
+#' Define a house structure vector that describes the population in each household, which is useful in the clustered interference. In this running example, houses refer to clusters and kids refer to experimental units.
+#'
+#' @param N The number of observations (kids)
+#' @param K The number of households
+#' @param equal A binary parameter that determines the exact house structure. If equal=TRUE, every household has equal number of kids. If equal=FALSE, every household samples the number of kids at random.
+#'
+#' @return A vector that gives the number of kids in each household
+#' @export
+out_house_structure = function(N=900,K=N/3,equal=T){
+  if(equal){ # exactly N observations
+    housestruct = rep(N/K,K)
+  }
+  if(!equal){ # on average N observations
+    housestruct = sample(2:((2*N/K)-2),K,replace=T)
+  }
+  housestruct
+}
+
+#' Get a sample from 1:k
+#'
+#' @param k the maximum number that we can sample. 
+#'
+#' @return A number sampled from 1:k
+#' @export
+sample_mod = function(k){
+  sample(1:k,1)
+}
+
+
+#' this function gives the exposure statuses for all observations
+#'
+#' @param housestruct The house structure vector that gives the number of kids in each household
+#' @param K1 The number of houses to treat. 
+#'
+#' @return A list specifies treated houses and treated kids
+#' @export
+out_treat_household = function(housestruct, K1){
+  which_house = sample(1:length(housestruct),size=K1,replace=F) # which households to treat?
+  which_kid = apply(as.matrix(housestruct[which_house]),1,sample_mod) # which kids to treat (conditional on the treated households)?
+  return(list(which_house=which_house,which_kid=which_kid))
+}
+
+#' Gives a range of indices that are exposed to treatments
+#'
+#' @param ii the index of interest
+#' @param lind the first index in each household
+#' @param hind the last index in each household
+#'
+#' @return A vector of indices exposed to the treatment
+#' @export
+out_exp_ind = function(ii,lind,hind){
+  lb = lind[ii]
+  ub = hind[ii]
+  lb:ub
+}
+
+#' This function returns the treatment status for all observations. 
+#'
+#' @param N The number of observations (kids).
+#' @param K The number of houses.
+#' @param treatment_list A list of treated houses and treated kids.
+#' @param housestruct House structure vector that gives number of kids in each household.
+#'
+#' @return an N x 3 matrix (N = # of observations (kids)), the first column identifies which households are treated with a "1" for the first kid in a treated household, the second and third columns are the ones that matter, they are the treatment and exposure vectors at the observation (kid) level.
+#' @export
+out_Z_household = function(N,K,treatment_list,housestruct){
+  which_house = sort(treatment_list$which_house)
+  theord = order(treatment_list$which_house)
+  which_kid = treatment_list$which_kid[theord]
+  
+  Z = matrix(0,nrow=N,ncol=3)
+  colnames(Z) = c('houseind','treat','exp')
+  houseind = cumsum(housestruct)-housestruct[1]+1
+  Z[houseind,1] = 1 # separates out the different houses
+  treatedind = houseind[which_house] + which_kid - 1
+  Z[treatedind,2] = 1
+  lind = houseind[which_house] 
+  hind = lind + housestruct[which_house] - 1
+  expind = c(apply(as.matrix(1:length(which_house)),1,out_exp_ind,lind=lind,hind=hind))
+  Z[expind,3] = 1
+  Z
+}
+
+#' Returns matrix \code{Z} of dimension (number of units x number of randomizations, i.e. assignments.)
+#'
+#' @param N The number of observations (kids).
+#' @param K The number of houses.
+#' @param equal A binary parameter that determines the exact house structure. If equal=TRUE, every household has equal number of kids. If equal=FALSE, every household is constructed by sampling the number of kids at random.
+#' @param numrand The number of randomizations
+#' 
+#' @return A matrix of dimension (number of units x number of randomizations, i.e. assignments.) comprised of 0, denoting a unit is pure control under that particular assignment, 1 denoting a unit is a spillover under that particular assignment, and 2, denoting a unit is treated under that particular assignment.
+#' @export
+out_Zprime = function(N,K,equal=T,numrand){
+  housestruct = out_house_structure(N,K,equal)
+  Zprime_mat = matrix(0,nrow=N,ncol=numrand)
+  for(nn in 1:numrand){
+    treatment_list = out_treat_household(housestruct,K1=K/2)  
+    Zp = out_Z_household(N,K,treatment_list,housestruct)
+    Zp_compact = rowSums(Zp[,2:3])
+    Zprime_mat[,nn] = Zp_compact
+  }
+  Zprime_mat
+}
+
+#' Simulates the outcome vector based on the treatment assignment vector. The specific data generating procedure is adopted from Basse & Feller (2018).
+#'
+#' @param N The number of observations (kids).
+#' @param K The number of houses.
+#' @param Zobs Observed treatment assignment vector.
+#' @param tau_main The main effect.
+#' @param sig_c Standard error on the causal effect.
+#' @param sig_y Standard error on the outcome vector.
+#' @param taus Spillover effect.
+#' @param taup Primary effect.
+#' @param mu00 The effect on pure control units.
+#' @param equal A binary parameter that determines the exact house structure. If equal=TRUE, every household has equal number of kids. If equal=FALSE, every household samples the number of kids at random.
+#' 
+#' @return An outcome vector.
+#' @export
+out_bassefeller = function(N, K, Zobs, tau_main,
+                           sig_c=0.1,
+                           sig_y=0.5, taus = 0.7,taup = 1.5,mu00 = 2,equal=T){
+  sig_mu <- sig_taup <- sig_taus <- sig_c
+  Yi00 = rnorm(K,mu00,sig_mu)
+  tauip = rnorm(K,taup,sig_taup)
+  tauis = rnorm(K,taus,sig_taus)
+  
+  # generate average potential outcomes
+  ## Yi11: house i treated and self treated
+  ## Yi00: house i not treated and self not treated
+  ## Yi10: house i treated and self not treated
+  Yi11 =  Yi00 + tauip; Yi10 =  Yi00 + tauis
+  
+  # get the experimental structure (OBSERVED)
+  housestruct = out_house_structure(N,K,equal)
+  
+  # potential outcome vectors
+  Yij00 = c()
+  Yij10 = c()
+  Yij11 = c()
+  for(kk in 1:K){
+    Yij00 = c(Yij00,rnorm(housestruct[kk],Yi00[kk],sig_y))  
+    Yij10 = c(Yij10,rnorm(housestruct[kk],Yi10[kk],sig_y))  
+    Yij11 = c(Yij11,rnorm(housestruct[kk],Yi11[kk],sig_y))  
+  }
+  
+  ## NULL TRUE
+  Yij10 = Yij00 + tau_main # enforcing null right here to test validity
+  
+  # Yi00 observations
+  Yobs = rep(NA, N)
+  Yobs = Yij00 * (Zobs==0) + Yij10 * (Zobs==1) + Yij11 * (Zobs==2)
+  return(list(Yobs=Yobs,Zobs=Zobs))
+}
+
 
