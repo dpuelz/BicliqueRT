@@ -10,7 +10,7 @@ install.packages("devtools")
 and then, install the package:
 ```R
 library(devtools)
-install_github("dpuelz/CliqueRT")
+install_github("dpuelz/BicliqueRT")
 ```
 
 The following example runs a small simulation on a synthetic network 
