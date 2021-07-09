@@ -21,7 +21,7 @@ with 500 nodes:
 # loads in the 500x500 matrix Dmat
 # Dmat just encodes all pairwise Euclidean distances between network nodes, and
 # this is used to define the spillover hypothesis below.
-library(CliqueRT)
+library(BicliqueRT)
 set.seed(1)
 thenetwork = out_example_network(500)
 D = thenetwork$D
