@@ -41,9 +41,10 @@ radius = 0.01
 # b_threshold is a scalar denoting the threshold that triggers an exposure to b.  If exposure b
 # is simply binary, i.e. whether or not unit j is exposed to b, then this value should be set to 1.
 Z = out_Z(pi=rep(0.2,dim(D)[1]),num_randomizations)
-D_a <- D_b <- sparsify((D<radius)); a_threshold = 1
+D_a = D_b = sparsify((D<radius))
+a_threshold = b_threshold = 1
 
-Z_a <- Z_b <- D_a%*%Z
+Z_a = Z_b = D_a%*%Z
 Z_a = sparsify((Z_a>=a_threshold))
 Z_b = sparsify((Z_b<b_threshold))
 
