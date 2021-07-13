@@ -1,4 +1,4 @@
-Package: CliqueRT
+Package: BicliqueRT
 Type: Package
 Title: Randomization-Based Testing of Causal Effects under General Interference
 Version: 1.0
