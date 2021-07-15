@@ -4,7 +4,7 @@
 \alias{out_pval}
 \title{Calculates p-value or test decision}
 \usage{
-out_pval(rtest_out, ret_pval, alpha)
+out_pval(rtest_out, ret_pval, alpha, tol = 1e-14)
 }
 \arguments{
 \item{rtest_out}{A \code{List} with elements \code{tobs}, \code{tvals} (see \link{one_sided_test} for details.)}
@@ -12,6 +12,8 @@ out_pval(rtest_out, ret_pval, alpha)
 \item{ret_pval}{A \code{Boolean} indicating whether to return a p-value (TRUE) or not.}
 
 \item{alpha}{Desired test level (from 0 to 1).}
+
+\item{tol}{tolerance level for equality between \code{tobs} and \code{tvals}.}
 }
 \value{
 Binary decision if \code{ret_pval} is TRUE, or the p-value otherwise.
@@ -20,5 +22,5 @@ Binary decision if \code{ret_pval} is TRUE, or the p-value otherwise.
 Depending on \code{ret_pval} this function returns either a p-value for the test or the binary decision.
 }
 \details{
-Returns 1 if the test rejects, 0 otherwise.
+Returns 1 if the test rejects, 0 otherwise. Note that the test is a two-sided one.
 }

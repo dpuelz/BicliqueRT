@@ -4,7 +4,7 @@
 \alias{two_sided_test}
 \title{Two-sided testing}
 \usage{
-two_sided_test(tobs, tvals, alpha)
+two_sided_test(tobs, tvals, alpha, tol = 1e-14)
 }
 \arguments{
 \item{tobs}{The observed value of the test statistic (scalar).}
@@ -12,14 +12,26 @@ two_sided_test(tobs, tvals, alpha)
 \item{tvals}{Vector of randomization values of the test statistic (to compare with \code{tobs}).}
 
 \item{alpha}{Desired level of the test (between 0 to 1).}
+
+\item{tol}{Used to check whether \code{tobs} is equal to the 1-\code{alpha}/2
+or \code{alpha}/2 quantile of \code{tvals}.
+If the observed \code{tobs} is within \code{tol} of any of \code{tvals}, they
+will be treated as equal.}
 }
 \value{
-Test decision (binary).
+Test decision (binary). Returns 1 if the test rejects, 0 otherwise.
 }
 \description{
 Decides to reject or not based on observed test statistic value \code{tobs}
 and randomization values \code{tvals}. The test may randomize to achieve the specified level \code{alpha}
 when there are very few randomization values.
+}
+\examples{
+tvals <- seq(0, 1, length.out=1001)
+tobs <- 0.95 + 1e-13
+> two_sided_test(tobs, tvals, 0.1)
+[1] 1
+
 }
 \seealso{
 Testing Statistical Hypotheses (Ch. 15, Lehman and Romano, 2006)
