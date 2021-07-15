@@ -2,18 +2,21 @@
 % Please edit documentation in R/functions.R
 \name{out_Z}
 \alias{out_Z}
-\title{Returns sparse matrix \code{Z} of dimension (number of units x number of randomizations, i.e. assignments.)}
+\title{Generating an experiment design}
 \usage{
 out_Z(pi, num_randomizations)
 }
 \arguments{
-\item{pi}{A \code{vector} of length number of units.}
+\item{pi}{A \code{vector} of length of number of units, specifying the
+probability of an individual being treated in a randomization.}
 
 \item{num_randomizations}{A \code{scalar} denoting the number of assignments desired.}
 }
 \value{
-\code{Z} (sparse binary matrix).  The first column is the observed assignmenht.
+\code{Z} (sparse binary matrix). The first column is the observed assignment.
 }
 \description{
-Returns sparse matrix \code{Z} of dimension (number of units x number of randomizations, i.e. assignments.)
+Returns sparse matrix \code{Z} of dimension (number of units x number of randomizations, i.e. assignments).
+Each column represents a randomization, with equal probability. Within each
+randomization, individuals have a probability of \code{pi} of being treated (equals 1).
 }

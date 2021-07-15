@@ -2,7 +2,7 @@
 % Please edit documentation in R/functions.R
 \name{out_Yobs}
 \alias{out_Yobs}
-\title{Computes the observed outcome vector, given potential outcomes on the exposures}
+\title{Computing observed outcome}
 \usage{
 out_Yobs(z_a, z_b, Y_a, Y_b)
 }
@@ -20,4 +20,15 @@ A single observed outcome vector.
 }
 \description{
 Computes the observed outcome vector, given potential outcomes on the exposures
+}
+\examples{
+Za <- c(1,1,0)
+Zb <- c(0,0,1)
+# Za and Zb tells us that the first and second individual are exposed to \code{a},
+# while the third individual is exposed to \code{b}.
+Ya <- rep(0,3)
+Yb <- Ya + 1
+# Ya and Yb tells us that all individuals have potential outcome 0 if exposed to \code{a}, 1 if exposed to \code{b}
+out_Yobs(Za, Zb, Ya, Yb) # this is what we observed in this trial.
+[1] 0 0 1
 }
