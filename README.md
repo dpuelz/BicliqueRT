@@ -13,8 +13,7 @@ library(devtools)
 install_github("dpuelz/BicliqueRT")
 ```
 
-The following example runs a small simulation on a synthetic network 
-with 500 nodes:
+The following simulation example illustrates spatial inference on a small synthetic network with 500 nodes:
 
 ```R
 # generated network - 3 clusters of 2D Gaussians
@@ -56,3 +55,9 @@ Y = out_Yobs(Z_a[,1],Z_b[,1],Y_a,Y_b)
 # run the test
 CRT = clique_test(Y,Z,Z_a,Z_b,Zobs_id=1,minr=15,minc=15)
 ```
+
+The following simulation example illustrates clustered inference with 2000 individuals equally divided into 500 households
+
+
+
+
