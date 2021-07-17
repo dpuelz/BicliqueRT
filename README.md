@@ -76,7 +76,7 @@ Zobs_id = 1
 # it has exposure 1 if it's untreated but someone else in the same cluster is treated;
 # it has exposure 2 if it's treated.
 Zprime_mat = out_Zprime(N, K, numrand=1000)
-Z = Zprime_mat==2    # we convert Z to be a binary indicating whether individual is treated (T) or not (F)
+Z = Zprime_mat==2    # we convert Z to be a binary matrix indicating whether individual is treated (T) or not (F)
 Z_a = Zprime_mat==1  # controlled individuals in treated households, "spillover"
 Z_b = Zprime_mat==0  # individuals in untreated households, "controlled"
 
