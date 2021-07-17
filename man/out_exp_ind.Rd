@@ -2,8 +2,7 @@
 % Please edit documentation in R/functions.R
 \name{out_exp_ind}
 \alias{out_exp_ind}
-\title{Gives a range of indices that are exposed to treatments. I think it can be in
-corporated into \code{out_Z_household}.}
+\title{Gives a range of indices that are exposed to treatments. See \code{out_Z_household}.}
 \usage{
 out_exp_ind(ii, lind, hind)
 }
@@ -18,6 +17,5 @@ out_exp_ind(ii, lind, hind)
 A vector of indices exposed to the treatment
 }
 \description{
-Gives a range of indices that are exposed to treatments. I think it can be in
-corporated into \code{out_Z_household}.
+Gives a range of indices that are exposed to treatments. See \code{out_Z_household}.
 }
