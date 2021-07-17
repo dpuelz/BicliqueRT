@@ -2,7 +2,7 @@
 % Please edit documentation in R/functions.R
 \name{out_bassefeller}
 \alias{out_bassefeller}
-\title{Simulates the outcome vector based on the treatment assignment vector. The specific data generating procedure is adopted from Basse & Feller (2018).}
+\title{DGP of Basse and Feller (2018)}
 \usage{
 out_bassefeller(
   N,
@@ -26,7 +26,7 @@ out_bassefeller(
 
 \item{tau_main}{The main effect.}
 
-\item{sig_c}{Standard error on the causal effect.}
+\item{sig_c}{Standard error on the causal effect. Here \eqn{\sigma_\mu=\sigma_\tau}=\code{sig_c}.}
 
 \item{sig_y}{Standard error on the outcome vector.}
 
@@ -36,11 +36,12 @@ out_bassefeller(
 
 \item{mu00}{The effect on pure control units.}
 
-\item{equal}{A binary parameter that determines the exact house structure. If equal=TRUE, every household has equal number of kids. If equal=FALSE, every household samples the number of kids at random.}
+\item{equal}{A binary parameter that determines the exact house structure. If \code{equal=TRUE}, every household has equal number of kids. If \code{equal=FALSE}, every household samples the number of kids at random.}
 }
 \value{
-An outcome vector.
+An outcome vector of length \code{N}.
 }
 \description{
-Simulates the outcome vector based on the treatment assignment vector. The specific data generating procedure is adopted from Basse & Feller (2018).
+Simulates an outcome vector based on the treatment assignment vector.
+The specific data generating procedure is adopted from Basse & Feller (2018).
 }

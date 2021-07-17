@@ -10,7 +10,7 @@ sparsify(mat)
 \item{mat}{A matrix to be sparsified}
 }
 \value{
-A sparse matrix
+A sparse matrix.
 }
 \description{
 Casts matrix \code{mat} into a sparse matrix.

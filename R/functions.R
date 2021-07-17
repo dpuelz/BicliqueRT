@@ -1,9 +1,9 @@
 #' The main randomization test function.
 #'
 #' @param Y The observed outcome vector.
-#' @param Z A binary matrix of dimension (number of units x number of randomizations, i.e. assignments.) storing the assignment vectors.
-#' @param Z_a A binary matrix with dimension (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{a} under assignment j.  Please see example.
-#' @param Z_b A binary matrix with (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{b} under assignment j.  Please see example.
+#' @param Z A binary matrix of dimension (number of units x number of randomizations, i.e. assignments.) storing the assignment vectors. Please see example.
+#' @param Z_a A binary matrix with dimension (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{a} under assignment j. Please see example.
+#' @param Z_b A binary matrix with (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{b} under assignment j. Please see example.
 #' @param Zobs_id The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.
 #' @param minr The minimum number of focal units included in the cliques (algorithm runtime is sensitive to this value).
 #' @param minc The minimum number of focal assignment included in the cliques (algorithm runtime is sensitive to this value).
@@ -88,8 +88,8 @@ clique_test = function(Y,Z,Z_a,Z_b,Zobs_id,minr,minc,...){
   if(stop_at_Zobs){ conditional_clique = decomp }
   if(!stop_at_Zobs){ conditional_clique = out_clique(Zobs_id,decomp) }
 
-  focal_units = as.numeric(rownames(conditional_clique))
-  focal_assignments = as.numeric(colnames(conditional_clique))
+  focal_units = as.numeric(rownames(conditional_clique)) # a list of row names
+  focal_assignments = as.numeric(colnames(conditional_clique)) # a list of column names
 
   # restrict Y to clique
   Y.clique = Y[focal_units]
@@ -132,7 +132,6 @@ clique_test = function(Y,Z,Z_a,Z_b,Zobs_id,minr,minc,...){
 #' > one_sided_test(tobs, tvals, 0.1)
 #' [1] 0
 #' @seealso Testing Statistical Hypotheses (Ch. 15, Lehman and Romano, 2006)
-#' @
 #' @export
 one_sided_test = function(tobs, tvals, alpha, tol=1e-14) {
   srt = sort(tvals)
@@ -252,12 +251,15 @@ out_Z = function(pi,num_randomizations){
   Z
 }
 
+
+#' Generating Null Exposure Graph
+#'
 #' One of the main functions for implementing the methodology.  Outputs the null-exposure graph based on binary matrices describing exposure conditions in the null hypothesis.  The null hypothesis is represented as:
-#' H_0: Y_i(\code{a}) = Y_i(\code{b}) for all i,
+#' \eqn{H_0}: \eqn{Y_i}(\code{a}) \eqn{= Y_i}(\code{b}) for all \eqn{i},
 #' and states that potential outcomes are equal for all units exposed to either \code{a} or \code{b}.
 #'
 #' @param Z_a A binary matrix with dimension (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{a} under assignment j.  Please see example.
-#' @param Z_b A binary matrix with (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{b} under assignment j.  Please see example.
+#' @param Z_b A binary matrix with (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{b} under assignment j.  Please see example. \code{Z_b} should have the same dimension as \code{Z_a}.
 #' @param Z A binary matrix of dimension (number of units x number of randomizations, i.e. assignments.) storing the assignment vectors.
 #' @param exclude_treated A Boolean denoting whether or not treated units are considered in the hypothesis.  Default is \code{TRUE}.
 #'
@@ -285,22 +287,33 @@ out_NEgraph = function(Z_a,Z_b,Z,exclude_treated=TRUE){
   as.matrix(NEgraph)
 }
 
-#' Identifies the clique to condition on in the randomization test.
+
+#' Finding conditioned clique
+#'
+#' Identifies the clique to condition on in the randomization test. Specifically, given the observed treatment
+#' and a biclique decomposition, it returns a submatrix of \code{NEGraph} that represents
+#' a biclique in the decomposition which contains the observed treatment.
 #'
 #' @param Zobs_id The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.
-#' @param decomp A list containing the clique decomposition of the null-exposure graph.
+#' @param decomp A list containing the clique decomposition of the null-exposure graph, given by the function \code{out_clique_decomposition}.
 #'
 #' @return The clique to condition on in the randomization test.
 #' @export
 out_clique = function(Zobs_id,decomp){
   for(ii in 1:length(decomp)){
-    if(sum(Zobs_id==colnames(decomp[[ii]]))){
+    if( sum( Zobs_id==colnames(decomp[[ii]]) ) ){
       return(as.matrix(decomp[ii][[1]]))
     }
   }
 }
 
-#' One of the main functions for implementing the methodology. Outputs a clique decomposition of the null-exposure graph.  Specifically, the resulting decomposition paritions the assignment space, while the unit space may overlap.
+
+#' Decomposing Null Exposure Graph NOT SURE WHY !=0
+#'
+#' One of the main functions for implementing the methodology.
+#' Outputs a biclique decomposition of the null-exposure graph.
+#' Specifically, the resulting decomposition paritions the assignment space,
+#' while the unit space may overlap.
 #'
 #' @param NEgraph The null-exposure graph object, see \code{out_NEgraph}.
 #' @param Zobs_id The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.
@@ -328,7 +341,7 @@ out_clique_decomposition = function(NEgraph,Zobs_id,minr,minc,stop_at_Zobs=TRUE)
     bitest = biclust(new.NEgraph, method=BCBimax(), minr, minc.new, number=numb)
     bicliqMat = bicluster(new.NEgraph,bitest)
     themat = bicliqMat$Bicluster1
-    while(length(themat)==0){
+    while(length(themat)==0){   ### if current minc gives no biclique decomposition, try a smaller one.
       numleft=numleft-1
       minc.new = min(minc,numleft)
       bitest = biclust(new.NEgraph!=0, method=BCBimax(), minr, minc.new, number=numb)
@@ -355,8 +368,11 @@ out_clique_decomposition = function(NEgraph,Zobs_id,minr,minc,stop_at_Zobs=TRUE)
   return(decomp)
 }
 
-
-#' Generates example two-dimensional network of 3 Gaussians.
+#' Generating distance matrix.
+#'
+#' Generates an example of two-dimensional network of 3 Gaussians with
+#' number of units being \code{num_units}.
+#' Please refer to the example.
 #'
 #' @param num_units The number of units in the network.
 #'
@@ -387,19 +403,22 @@ out_example_network = function(num_units){
 #'
 #' @param mat A matrix to be sparsified
 #'
-#' @return  A sparse matrix
+#' @return  A sparse matrix.
 #' @export
 sparsify <- function(mat){
   mat = Matrix(mat,sparse=TRUE)
   mat
 }
 
+#' Calculating average treatment effect
+#'
 #' Returns difference in means between exposures \code{b} and \code{a}, coded as \code{1} and \code{-1}, respectively.
 #'
-#' @param Z The treatment vector
+#' @param Z The treatment vector. Entries of \code{Z} are \code{1} or \code{-1},
+#'  indicating that under this treatment, individual is exposed to \code{b} or \code{a}
 #' @param Y The outcome vector
 #'
-#' @return The differenence in means between exposure contrasts \code{b} and \code{a}
+#' @return The differenence in means between exposure contrasts \code{b} and \code{a}.
 #' @export
 ate = function(Z,Y){
   ind1 = which(Z==1)
@@ -407,13 +426,21 @@ ate = function(Z,Y){
   mean(Y[ind1])-mean(Y[ind2])
 }
 
-#' Define a house structure vector that describes the population in each household, which is useful in the clustered interference. In this running example, houses refer to clusters and kids refer to experimental units.
+
+#' Generating household structure
+#'
+#' Define a house structure vector that describes the population in each household,
+#' which is useful in the clustered interference.
+#' In this running example, houses refer to clusters and kids refer to experimental units.
 #'
 #' @param N The number of observations (kids)
 #' @param K The number of households
-#' @param equal A binary parameter that determines the exact house structure. If equal=TRUE, every household has equal number of kids. If equal=FALSE, every household samples the number of kids at random.
+#' @param equal A binary parameter that determines the exact house structure. If \code{equal=TRUE},
+#'  every household has equal number of kids.
+#'  If \code{equal=FALSE}, every household samples the number of kids at random. But in each household,
+#'  there would be at least two and at most \code{(2*N/K)-2} kids. Hence, on average there would be \code{N/K} kids per household.
 #'
-#' @return A vector that gives the number of kids in each household
+#' @return A vector of length \code{K} that gives the number of kids in each household.
 #' @export
 out_house_structure = function(N=900,K=N/3,equal=T){
   if(equal){ # exactly N observations
@@ -429,19 +456,22 @@ out_house_structure = function(N=900,K=N/3,equal=T){
 #'
 #' @param k the maximum number that we can sample.
 #'
-#' @return A number sampled from 1:k
+#' @return An integer number sampled from 1 to \code{k}.
 #' @export
 sample_mod = function(k){
   sample(1:k,1)
 }
 
-
-#' this function gives the exposure statuses for all observations
+#' Generating exposure status for household
+#'
+#' Outputs the exposure status for all observations in a household structure. Specifically, given
+#' a household structure, it returns which households are to be treated, and within each treated
+#' household, which kid is to be treated. Only one kid per treated household is going to be treated.
 #'
 #' @param housestruct The house structure vector that gives the number of kids in each household
 #' @param K1 The number of houses to treat.
 #'
-#' @return A list specifies treated houses and treated kids
+#' @return A list specifies treated houses and treated kids in each treated houses.
 #' @export
 out_treat_household = function(housestruct, K1){
   which_house = sample(1:length(housestruct),size=K1,replace=F) # which households to treat?
@@ -449,7 +479,8 @@ out_treat_household = function(housestruct, K1){
   return(list(which_house=which_house,which_kid=which_kid))
 }
 
-#' Gives a range of indices that are exposed to treatments
+#' Gives a range of indices that are exposed to treatments. I think it can be in
+#' corporated into \code{out_Z_household}.
 #'
 #' @param ii the index of interest
 #' @param lind the first index in each household
@@ -463,7 +494,9 @@ out_exp_ind = function(ii,lind,hind){
   lb:ub
 }
 
-#' This function returns the treatment status for all observations.
+#' This function returns the treatment status for all observations. Note that treated
+#' kid in treated household here also has status \code{1} rather than \code{2}. Please see
+#' the example.
 #'
 #' @param N The number of observations (kids).
 #' @param K The number of houses.
@@ -506,25 +539,28 @@ out_Zprime = function(N,K,equal=T,numrand){
     treatment_list = out_treat_household(housestruct,K1=K/2)
     Zp = out_Z_household(N,K,treatment_list,housestruct)
     Zp_compact = rowSums(Zp[,2:3])
-    Zprime_mat[,nn] = Zp_compact
+    Zprime_mat[,nn] = Zp_compact # correct the true exposure for those being treated.
   }
   Zprime_mat
 }
 
-#' Simulates the outcome vector based on the treatment assignment vector. The specific data generating procedure is adopted from Basse & Feller (2018).
+#' DGP of Basse and Feller (2018)
+#'
+#' Simulates an outcome vector based on the treatment assignment vector.
+#' The specific data generating procedure is adopted from Basse & Feller (2018).
 #'
 #' @param N The number of observations (kids).
 #' @param K The number of houses.
 #' @param Zobs Observed treatment assignment vector.
 #' @param tau_main The main effect.
-#' @param sig_c Standard error on the causal effect.
+#' @param sig_c Standard error on the causal effect. Here \eqn{\sigma_\mu=\sigma_\tau}=\code{sig_c}.
 #' @param sig_y Standard error on the outcome vector.
 #' @param taus Spillover effect.
 #' @param taup Primary effect.
 #' @param mu00 The effect on pure control units.
-#' @param equal A binary parameter that determines the exact house structure. If equal=TRUE, every household has equal number of kids. If equal=FALSE, every household samples the number of kids at random.
+#' @param equal A binary parameter that determines the exact house structure. If \code{equal=TRUE}, every household has equal number of kids. If \code{equal=FALSE}, every household samples the number of kids at random.
 #'
-#' @return An outcome vector.
+#' @return An outcome vector of length \code{N}.
 #' @export
 out_bassefeller = function(N, K, Zobs, tau_main,
                            sig_c=0.1,
