@@ -2,18 +2,20 @@
 % Please edit documentation in R/functions.R
 \name{out_clique}
 \alias{out_clique}
-\title{Identifies the clique to condition on in the randomization test.}
+\title{Finding conditioned clique}
 \usage{
 out_clique(Zobs_id, decomp)
 }
 \arguments{
 \item{Zobs_id}{The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.}
 
-\item{decomp}{A list containing the clique decomposition of the null-exposure graph.}
+\item{decomp}{A list containing the clique decomposition of the null-exposure graph, given by the function \code{out_clique_decomposition}.}
 }
 \value{
 The clique to condition on in the randomization test.
 }
 \description{
-Identifies the clique to condition on in the randomization test.
+Identifies the clique to condition on in the randomization test. Specifically, given the observed treatment
+and a biclique decomposition, it returns a submatrix of \code{NEGraph} that represents
+a biclique in the decomposition which contains the observed treatment.
 }

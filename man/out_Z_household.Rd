@@ -2,7 +2,9 @@
 % Please edit documentation in R/functions.R
 \name{out_Z_household}
 \alias{out_Z_household}
-\title{This function returns the treatment status for all observations.}
+\title{This function returns the treatment status for all observations. Note that treated
+kid in treated household here also has status \code{1} rather than \code{2}. Please see
+the example.}
 \usage{
 out_Z_household(N, K, treatment_list, housestruct)
 }
@@ -19,5 +21,7 @@ out_Z_household(N, K, treatment_list, housestruct)
 an N x 3 matrix (N = # of observations (kids)), the first column identifies which households are treated with a "1" for the first kid in a treated household, the second and third columns are the ones that matter, they are the treatment and exposure vectors at the observation (kid) level.
 }
 \description{
-This function returns the treatment status for all observations.
+This function returns the treatment status for all observations. Note that treated
+kid in treated household here also has status \code{1} rather than \code{2}. Please see
+the example.
 }

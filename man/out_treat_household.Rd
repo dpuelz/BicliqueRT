@@ -2,7 +2,7 @@
 % Please edit documentation in R/functions.R
 \name{out_treat_household}
 \alias{out_treat_household}
-\title{this function gives the exposure statuses for all observations}
+\title{Generating exposure status for household}
 \usage{
 out_treat_household(housestruct, K1)
 }
@@ -12,8 +12,10 @@ out_treat_household(housestruct, K1)
 \item{K1}{The number of houses to treat.}
 }
 \value{
-A list specifies treated houses and treated kids
+A list specifies treated houses and treated kids in each treated houses.
 }
 \description{
-this function gives the exposure statuses for all observations
+Outputs the exposure status for all observations in a household structure. Specifically, given
+a household structure, it returns which households are to be treated, and within each treated
+household, which kid is to be treated. Only one kid per treated household is going to be treated.
 }

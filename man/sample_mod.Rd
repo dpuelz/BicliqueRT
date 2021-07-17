@@ -10,7 +10,7 @@ sample_mod(k)
 \item{k}{the maximum number that we can sample.}
 }
 \value{
-A number sampled from 1:k
+An integer number sampled from 1 to \code{k}.
 }
 \description{
 Get a sample from 1:k

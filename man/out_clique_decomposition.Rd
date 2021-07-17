@@ -2,7 +2,7 @@
 % Please edit documentation in R/functions.R
 \name{out_clique_decomposition}
 \alias{out_clique_decomposition}
-\title{One of the main functions for implementing the methodology. Outputs a clique decomposition of the null-exposure graph.  Specifically, the resulting decomposition paritions the assignment space, while the unit space may overlap.}
+\title{Decomposing Null Exposure Graph NOT SURE WHY !=0}
 \usage{
 out_clique_decomposition(NEgraph, Zobs_id, minr, minc, stop_at_Zobs = TRUE)
 }
@@ -21,5 +21,8 @@ out_clique_decomposition(NEgraph, Zobs_id, minr, minc, stop_at_Zobs = TRUE)
 If \code{stop_at_Zobs} is \code{TRUE}, a matrix representing the clique to condition upon. If \code{stop_at_Zobs} is \code{FALSE}, a list containing the clique decomposition of the null-exposure graph.
 }
 \description{
-One of the main functions for implementing the methodology. Outputs a clique decomposition of the null-exposure graph.  Specifically, the resulting decomposition paritions the assignment space, while the unit space may overlap.
+One of the main functions for implementing the methodology.
+Outputs a biclique decomposition of the null-exposure graph.
+Specifically, the resulting decomposition paritions the assignment space,
+while the unit space may overlap.
 }
