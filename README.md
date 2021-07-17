@@ -3,6 +3,7 @@ R package for randomization tests of causal effects under general interference. 
 
 This is an implementation of the clique-based randomization test developed in the paper [A Graph-Theoretic Approach to Randomization Tests of Causal Effects Under General Interference](https://arxiv.org/pdf/1910.10862.pdf). If used, please cite the paper.
 
+## Installation
 To use, first install devtools:
 ```R
 install.packages("devtools")
@@ -75,7 +76,7 @@ Zobs_id = 1
 # it has exposure 1 if it's untreated but someone else in the same cluster is treated;
 # it has exposure 2 if it's treated.
 Zprime_mat = out_Zprime(N, K, numrand=1000)
-Z = Zprime_mat==2    # treated individual in treated households, "treated"
+Z = Zprime_mat==2    # we convert Z to be a binary indicating whether individual is treated (T) or not (F)
 Z_a = Zprime_mat==1  # controlled individuals in treated households, "spillover"
 Z_b = Zprime_mat==0  # individuals in untreated households, "controlled"
 
