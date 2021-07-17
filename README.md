@@ -20,6 +20,7 @@ The following simulation example illustrates spatial inference on a small synthe
 # loads in the 500x500 matrix Dmat
 # Dmat just encodes all pairwise Euclidean distances between network nodes, and
 # this is used to define the spillover hypothesis below.
+
 library(BicliqueRT)
 set.seed(1)
 thenetwork = out_example_network(500)
@@ -53,11 +54,31 @@ Y_b = Y_a + 0.2
 Y = out_Yobs(Z_a[,1],Z_b[,1],Y_a,Y_b)
 
 # run the test
-CRT = clique_test(Y,Z,Z_a,Z_b,Zobs_id=1,minr=15,minc=15)
+CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, minr=15, minc=15)
 ```
 
-The following simulation example illustrates clustered inference with 2000 individuals equally divided into 500 households
+The following simulation example illustrates clustered inference with 2000 individuals equally divided into 500 households:
 
+```R
+library(BicliqueRT)
+set.seed(1)
+N = 2000 # total number of individuals
+K = 500  # total number of households, i.e., number of clusters
+Zobs_id = 1
 
+# Generate household-individual structure and experiment design
+# each column of Zprime_mat specifies an assignment, and each row represents an individual
+# entries of Zprime_mat is either 0, 1, or 2, indicating individual's exposure
+Zprime_mat = out_Zprime(N, K, numrand=1000)
+Z = Zprime_mat==2    # treated individual in treated households, "treated"
+Z_a = Zprime_mat==1  # controlled individuals in treated households, "spillover"
+Z_b = Zprime_mat==0  # individuals in untreated households, "controlled"
 
+# simulate an outcome vector assuming the null is true
+simdat = out_bassefeller(N, K, Zprime_mat[, Zobs_id],tau_main = 0.4)
+Yobs = simdat$Yobs
 
+# run the test
+CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, minr=20, minc=20)
+
+```
