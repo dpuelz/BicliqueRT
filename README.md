@@ -57,7 +57,7 @@ Y = out_Yobs(Z_a[,1],Z_b[,1],Y_a,Y_b)
 CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, minr=15, minc=15)
 ```
 
-The following simulation example illustrates clustered inference with 2000 individuals equally divided into 500 households:
+The following simulation example illustrates clustered inference with 2000 individuals equally divided into 500 clusters:
 
 ```R
 library(BicliqueRT)
