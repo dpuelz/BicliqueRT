@@ -13,6 +13,7 @@ library(devtools)
 install_github("dpuelz/BicliqueRT")
 ```
 
+## Example: Spatial Inference
 The following simulation example illustrates spatial inference on a small synthetic network with 500 nodes:
 
 ```R
@@ -57,6 +58,7 @@ Y = out_Yobs(Z_a[,1],Z_b[,1],Y_a,Y_b)
 CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, minr=15, minc=15)
 ```
 
+## Example: Clustered Inference
 The following simulation example illustrates clustered inference with 2000 individuals equally divided into 500 clusters:
 
 ```R
@@ -66,9 +68,12 @@ N = 2000 # total number of individuals
 K = 500  # total number of households, i.e., number of clusters
 Zobs_id = 1
 
-# Generate household-individual structure and experiment design
-# each column of Zprime_mat specifies an assignment, and each row represents an individual
-# entries of Zprime_mat is either 0, 1, or 2, indicating individual's exposure
+# Generate household-individual structure and experiment design.
+# Each column of Zprime_mat specifies an assignment, and each row represents an individual.
+# Entries of Zprime_mat is either 0, 1, or 2, indicating individual's exposure.
+# Here, an individual has exposure 0 if it's within untreated cluster;
+# it has exposure 1 if it's untreated but someone else in the same cluster is treated;
+# it has exposure 2 if it's treated.
 Zprime_mat = out_Zprime(N, K, numrand=1000)
 Z = Zprime_mat==2    # treated individual in treated households, "treated"
 Z_a = Zprime_mat==1  # controlled individuals in treated households, "spillover"
