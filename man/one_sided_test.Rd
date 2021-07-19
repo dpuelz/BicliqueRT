@@ -13,17 +13,28 @@ one_sided_test(tobs, tvals, alpha, tol = 1e-14)
 
 \item{alpha}{Desired level of the test (between 0 to 1).}
 
-\item{tol}{Used to check whether \code{tobs} is equal to the 1-\code{alpha} quantile of \code{tvals}.}
+\item{tol}{Used to check whether \code{tobs} is equal to the 1-\code{alpha} quantile of \code{tvals}.
+If the observed \code{tobs} is within \code{tol} of any of \code{tvals}, they
+will be treated as equal.}
 }
 \value{
-Test decision (binary).
+Test decision (binary). Returns 1 if the test rejects, 0 otherwise.
 }
 \description{
 Decides to reject or not based on observed test statistic value \code{tobs} and randomization values \code{tvals}.
 }
 \details{
 The test may randomize to achieve the specified level \code{alpha}
-when there are very few randomization values.
+when there are very few randomization values. Returns 1 if the test rejects, 0 otherwise.
+
+Note that if the \eqn{1-\alpha} percentile of \code{tvals} is the same as
+\code{tobs} (up to \code{tol}), it will return a randomized decison.
+}
+\examples{
+tvals <- seq(0.1, 1, length.out=10)
+tobs <- 0.85
+> one_sided_test(tobs, tvals, 0.1)
+[1] 0
 }
 \seealso{
 Testing Statistical Hypotheses (Ch. 15, Lehman and Romano, 2006)

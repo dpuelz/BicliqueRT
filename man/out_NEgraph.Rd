@@ -2,16 +2,14 @@
 % Please edit documentation in R/functions.R
 \name{out_NEgraph}
 \alias{out_NEgraph}
-\title{One of the main functions for implementing the methodology.  Outputs the null-exposure graph based on binary matrices describing exposure conditions in the null hypothesis.  The null hypothesis is represented as:
-H_0: Y_i(\code{a}) = Y_i(\code{b}) for all i,
-and states that potential outcomes are equal for all units exposed to either \code{a} or \code{b}.}
+\title{Generating Null Exposure Graph}
 \usage{
 out_NEgraph(Z_a, Z_b, Z, exclude_treated = TRUE)
 }
 \arguments{
 \item{Z_a}{A binary matrix with dimension (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{a} under assignment j.  Please see example.}
 
-\item{Z_b}{A binary matrix with (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{b} under assignment j.  Please see example.}
+\item{Z_b}{A binary matrix with (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{b} under assignment j.  Please see example. \code{Z_b} should have the same dimension as \code{Z_a}.}
 
 \item{Z}{A binary matrix of dimension (number of units x number of randomizations, i.e. assignments.) storing the assignment vectors.}
 
@@ -22,6 +20,6 @@ out_NEgraph(Z_a, Z_b, Z, exclude_treated = TRUE)
 }
 \description{
 One of the main functions for implementing the methodology.  Outputs the null-exposure graph based on binary matrices describing exposure conditions in the null hypothesis.  The null hypothesis is represented as:
-H_0: Y_i(\code{a}) = Y_i(\code{b}) for all i,
+\eqn{H_0}: \eqn{Y_i}(\code{a}) \eqn{= Y_i}(\code{b}) for all \eqn{i},
 and states that potential outcomes are equal for all units exposed to either \code{a} or \code{b}.
 }

@@ -9,11 +9,11 @@ clique_test(Y, Z, Z_a, Z_b, Zobs_id, minr, minc, ...)
 \arguments{
 \item{Y}{The observed outcome vector.}
 
-\item{Z}{A binary matrix of dimension (number of units x number of randomizations, i.e. assignments.) storing the assignment vectors.}
+\item{Z}{A binary matrix of dimension (number of units x number of randomizations, i.e. assignments.) storing the assignment vectors. Please see example.}
 
-\item{Z_a}{A binary matrix with dimension (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{a} under assignment j.  Please see example.}
+\item{Z_a}{A binary matrix with dimension (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{a} under assignment j. Please see example.}
 
-\item{Z_b}{A binary matrix with (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{b} under assignment j.  Please see example.}
+\item{Z_b}{A binary matrix with (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{b} under assignment j. Please see example.}
 
 \item{Zobs_id}{The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.}
 
@@ -30,6 +30,7 @@ A list of items summarizing the randomization test.
 The main randomization test function.
 }
 \examples{
+# Spatial interference
 # generated network - 3 clusters of 2D Gaussians
 # loads in the 500x500 matrix Dmat
 # Dmat just encodes all pairwise Euclidean distances between network nodes, and
@@ -52,12 +53,11 @@ radius = 0.01
 # b_threshold is a scalar denoting the threshold that triggers an exposure to b.  If exposure b
 # is simply binary, i.e. whether or not unit j is exposed to b, then this value should be set to 1.
 Z = out_Z(pi=rep(0.2,dim(D)[1]),num_randomizations)
-D_a = sparsify((D<radius)); a_threshold = 1
-D_b = sparsify((D<radius)); b_threshold = 1
+D_a = D_b = sparsify((D<radius))
+a_threshold = b_threshold = 1
 
-Z_a = D_a\%*\%Z
+Z_a = Z_b = D_a\%*\%Z
 Z_a = sparsify((Z_a>=a_threshold))
-Z_b = D_b\%*\%Z
 Z_b = sparsify((Z_b<b_threshold))
 
 # simulating an outcome vector
@@ -67,4 +67,26 @@ Y = out_Yobs(Z_a[,1],Z_b[,1],Y_a,Y_b)
 
 # run the test
 CRT = clique_test(Y,Z,Z_a,Z_b,Zobs_id=1,minr=15,minc=15)
+
+# Clustered interference
+# simulation parameters
+N = 2000
+K = 500
+Zobs_id = 1
+
+# generate clustered structure
+library(Matrix)
+library(biclust)
+set.seed(1)
+Zprime_mat = out_Zprime(N, K, numrand=1000)
+Z = Zprime_mat==2
+Z_a = Zprime_mat==1
+Z_b = Zprime_mat==0
+
+# simulate an outcome vector
+simdat = out_bassefeller(N, K, Zprime_mat[, Zobs_id],tau_main = 0.4)
+Yobs = simdat$Yobs
+
+# run the test
+CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, minr = 20, minc = 20)
 }

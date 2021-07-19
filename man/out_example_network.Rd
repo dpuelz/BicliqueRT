@@ -2,7 +2,7 @@
 % Please edit documentation in R/functions.R
 \name{out_example_network}
 \alias{out_example_network}
-\title{Generates example two-dimensional network of 3 Gaussians.}
+\title{Generating distance matrix.}
 \usage{
 out_example_network(num_units)
 }
@@ -13,5 +13,7 @@ out_example_network(num_units)
 A list of \code{D}, a square matrix of all pairwise Euclidean distances between units, and \code{thepoints}, a matrix of dimension \code{num_units} by 2 of coordinates of the generated network units. (binary).
 }
 \description{
-Generates example two-dimensional network of 3 Gaussians.
+Generates an example of two-dimensional network of 3 Gaussians with
+number of units being \code{num_units}.
+Please refer to the example.
 }

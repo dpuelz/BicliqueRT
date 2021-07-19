@@ -2,17 +2,18 @@
 % Please edit documentation in R/functions.R
 \name{ate}
 \alias{ate}
-\title{Returns difference in means between exposures \code{b} and \code{a}, coded as \code{1} and \code{-1}, respectively.}
+\title{Calculating average treatment effect}
 \usage{
 ate(Z, Y)
 }
 \arguments{
-\item{Z}{The treatment vector}
+\item{Z}{The treatment vector. Entries of \code{Z} are \code{1} or \code{-1},
+indicating that under this treatment, individual is exposed to \code{b} or \code{a}}
 
 \item{Y}{The outcome vector}
 }
 \value{
-The differenence in means between exposure contrasts \code{b} and \code{a}
+The differenence in means between exposure contrasts \code{b} and \code{a}.
 }
 \description{
 Returns difference in means between exposures \code{b} and \code{a}, coded as \code{1} and \code{-1}, respectively.
