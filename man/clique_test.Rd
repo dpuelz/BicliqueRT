@@ -4,7 +4,7 @@
 \alias{clique_test}
 \title{The main randomization test function.}
 \usage{
-clique_test(Y, Z, Z_a, Z_b, Zobs_id, minr, minc, ...)
+clique_test(Y, Z, Z_a, Z_b, Zobs_id, decom = "bimax", ...)
 }
 \arguments{
 \item{Y}{The observed outcome vector.}
@@ -17,14 +17,15 @@ clique_test(Y, Z, Z_a, Z_b, Zobs_id, minr, minc, ...)
 
 \item{Zobs_id}{The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.}
 
-\item{minr}{The minimum number of focal units included in the cliques (algorithm runtime is sensitive to this value).}
-
-\item{minc}{The minimum number of focal assignment included in the cliques (algorithm runtime is sensitive to this value).}
+\item{decom}{The algorithm used to calculate the biclique decomposition. Currently supported algorithms
+are "bimax" and "greedy".}
 
 \item{...}{Other stuff ...}
 }
 \value{
-A list of items summarizing the randomization test.
+A list of items summarizing the randomization test. If for some focal assignments
+in the a biclique that contains \code{Zobs}, exposures for each unit are the same, it will
+contain an error message, and the test decision will be \code{NA}.
 }
 \description{
 The main randomization test function.
@@ -65,8 +66,11 @@ Y_a = rnorm(dim(Z)[1])
 Y_b = Y_a + 0.2
 Y = out_Yobs(Z_a[,1],Z_b[,1],Y_a,Y_b)
 
-# run the test
-CRT = clique_test(Y,Z,Z_a,Z_b,Zobs_id=1,minr=15,minc=15)
+# run the test using Bimax to decompose the null-exposure graph
+CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, decom='bimax', minr=15, minc=15)
+
+# alternatively, we can use a greedy algorithm to do decomposition by specifying decom
+CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, decom='greedy', minass=15)
 
 # Clustered interference
 # simulation parameters
@@ -87,6 +91,9 @@ Z_b = Zprime_mat==0
 simdat = out_bassefeller(N, K, Zprime_mat[, Zobs_id],tau_main = 0.4)
 Yobs = simdat$Yobs
 
-# run the test
-CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, minr = 20, minc = 20)
+# run the test using Bimax
+CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, decom='bimax', minr=20, minc=20)
+# again, we can use the greedy algorithm as follows:
+CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, decom='greedy', minass=20)
+
 }

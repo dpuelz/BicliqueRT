@@ -2,7 +2,7 @@
 % Please edit documentation in R/functions.R
 \name{out_clique_decomposition}
 \alias{out_clique_decomposition}
-\title{Decomposing Null Exposure Graph NOT SURE WHY !=0}
+\title{Decomposing Null Exposure Graph Using Bimax}
 \usage{
 out_clique_decomposition(NEgraph, Zobs_id, minr, minc, stop_at_Zobs = TRUE)
 }
@@ -22,7 +22,7 @@ If \code{stop_at_Zobs} is \code{TRUE}, a matrix representing the clique to condi
 }
 \description{
 One of the main functions for implementing the methodology.
-Outputs a biclique decomposition of the null-exposure graph.
+Outputs a biclique decomposition of the null-exposure graph using Bimax algorithm.
 Specifically, the resulting decomposition paritions the assignment space,
 while the unit space may overlap.
 }
