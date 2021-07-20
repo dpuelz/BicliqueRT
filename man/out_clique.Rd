@@ -9,7 +9,7 @@ out_clique(Zobs_id, decomp)
 \arguments{
 \item{Zobs_id}{The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.}
 
-\item{decomp}{A list containing the clique decomposition of the null-exposure graph, given by the function \code{out_clique_decomposition}.}
+\item{decomp}{A list containing the clique decomposition of the null-exposure graph, given by one of the decomposition algorithms.}
 }
 \value{
 The clique to condition on in the randomization test.

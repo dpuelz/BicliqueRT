@@ -5,11 +5,13 @@
 #' @param Z_a A binary matrix with dimension (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{a} under assignment j. Please see example.
 #' @param Z_b A binary matrix with (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{b} under assignment j. Please see example.
 #' @param Zobs_id The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.
-#' @param minr The minimum number of focal units included in the cliques (algorithm runtime is sensitive to this value).
-#' @param minc The minimum number of focal assignment included in the cliques (algorithm runtime is sensitive to this value).
+#' @param decom The algorithm used to calculate the biclique decomposition. Currently supported algorithms
+#' are "bimax" and "greedy".
 #' @param ... Other stuff ...
 #'
-#' @return A list of items summarizing the randomization test.
+#' @return A list of items summarizing the randomization test. If for some focal assignments
+#' in the biclique that contains \code{Zobs}, exposures for each unit are the same, it will
+#' contain an error message, and the test decision will be \code{NA}.
 #' @examples
 #' # Spatial interference
 #' # generated network - 3 clusters of 2D Gaussians
@@ -46,8 +48,11 @@
 #' Y_b = Y_a + 0.2
 #' Y = out_Yobs(Z_a[,1],Z_b[,1],Y_a,Y_b)
 #'
-#' # run the test
-#' CRT = clique_test(Y,Z,Z_a,Z_b,Zobs_id=1,minr=15,minc=15)
+#' # run the test using Bimax to decompose the null-exposure graph
+#' CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, decom='bimax', minr=15, minc=15)
+#'
+#' # alternatively, we can use a greedy algorithm to do decomposition by specifying decom
+#' CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, decom='greedy', minass=15)
 #'
 #' # Clustered interference
 #' # simulation parameters
@@ -68,10 +73,14 @@
 #' simdat = out_bassefeller(N, K, Zprime_mat[, Zobs_id],tau_main = 0.4)
 #' Yobs = simdat$Yobs
 #'
-#' # run the test
-#' CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, minr = 20, minc = 20)
+#' # run the test using Bimax
+#' CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, decom='bimax', minr=20, minc=20)
+#' # again, we can use the greedy algorithm as follows:
+#' CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, decom='greedy', minass=20)
+#'
 #' @export
-clique_test = function(Y,Z,Z_a,Z_b,Zobs_id,minr,minc,...){
+clique_test = function(Y, Z, Z_a, Z_b, Zobs_id, decom='bimax', ...){
+  addparam = list(...) # catch variable parameters
 
   # setting default values if they do not exist
   if(!exists("exclude_treated")){ exclude_treated=TRUE }
@@ -84,9 +93,20 @@ clique_test = function(Y,Z,Z_a,Z_b,Zobs_id,minr,minc,...){
 
   # decompose the null-exposure graph
   cat("decompose the null-exposure graph ... \n")
-  decomp = out_clique_decomposition(NEgraph,Zobs_id,minr,minc,stop_at_Zobs)
-  if(stop_at_Zobs){ conditional_clique = decomp }
-  if(!stop_at_Zobs){ conditional_clique = out_clique(Zobs_id,decomp) }
+  if (decom == 'bimax'){
+    decomp = out_clique_decomposition(NEgraph, Zobs_id,
+                                      minr=addparam$minr, minc=addparam$minc, stop_at_Zobs)
+    if(stop_at_Zobs){
+      conditional_clique = decomp
+      } else {conditional_clique = out_clique(Zobs_id,decomp)}
+  }
+
+  if (decom == 'greedy'){
+    decomp = cliquedecom_greedy(NEgraph, Zobs_id, num_ass=addparam$minass, stop_at_Zobs)
+    if(stop_at_Zobs){
+      conditional_clique = decomp
+      } else {conditional_clique = out_clique(Zobs_id,decomp)}
+  }
 
   focal_units = as.numeric(rownames(conditional_clique)) # a list of row names
   focal_assignments = as.numeric(colnames(conditional_clique)) # a list of column names
@@ -103,8 +123,18 @@ clique_test = function(Y,Z,Z_a,Z_b,Zobs_id,minr,minc,...){
   rtest_out = list(tobs=tobs,tvals=tvals)
   decision = out_pval(rtest_out,ret_pval,alpha=0.05)
 
+  valid_clique <- apply(conditional_clique, 2, function(x) length(unique(x))==1)
+  if (sum(valid_clique)!=0){
+    cat("The biclique containing Zobs is not valid \n")
+    valid_clique <- "The biclique containing Zobs is not valid "
+  } else {
+    valid_clique <- c()
+  }
+
   # organize into return list
-  retlist = list(decision=decision,ret_pval=ret_pval,tobs=tobs,tvals=tvals,focal_units=focal_units,focal_assignments=focal_assignments,NEgraph=NEgraph)
+  retlist = list(decision=decision,ret_pval=ret_pval,tobs=tobs,
+                 tvals=tvals,focal_units=focal_units,focal_assignments=focal_assignments,
+                 NEgraph=NEgraph,warnings=valid_clique)
   retlist
 }
 
@@ -295,7 +325,7 @@ out_NEgraph = function(Z_a,Z_b,Z,exclude_treated=TRUE){
 #' a biclique in the decomposition which contains the observed treatment.
 #'
 #' @param Zobs_id The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.
-#' @param decomp A list containing the clique decomposition of the null-exposure graph, given by the function \code{out_clique_decomposition}.
+#' @param decomp A list containing the clique decomposition of the null-exposure graph, given by one of the decomposition algorithms.
 #'
 #' @return The clique to condition on in the randomization test.
 #' @export
@@ -308,10 +338,10 @@ out_clique = function(Zobs_id,decomp){
 }
 
 
-#' Decomposing Null Exposure Graph NOT SURE WHY !=0
+#' Decomposing Null Exposure Graph Using Bimax
 #'
 #' One of the main functions for implementing the methodology.
-#' Outputs a biclique decomposition of the null-exposure graph.
+#' Outputs a biclique decomposition of the null-exposure graph using Bimax algorithm.
 #' Specifically, the resulting decomposition paritions the assignment space,
 #' while the unit space may overlap.
 #'
@@ -367,6 +397,115 @@ out_clique_decomposition = function(NEgraph,Zobs_id,minr,minc,stop_at_Zobs=TRUE)
   }
   return(decomp)
 }
+
+#' Greedy Algorithm to Find a Biclique
+#'
+#' This function returns a biclique in a null-exposure graph using a greedy algorithm. The
+#' minimum number of focal assignments in the biclique is \code{num_ass}.
+#'
+#' @param ne The null-exposure graph
+#' @param num_ass Controls the minimum number of focal assignments in the biclique found
+#' by the algorithm (algorithm runtime is sensitive to this value).
+#' @return A biclique of the input null-exposure graph \code{ne}.
+#' @export
+greedy_decom = function(ne, num_ass){
+  focal_units = c() # set of focal units
+  focal_ass = c() # set of focal assignments
+
+  CONT = TRUE
+  ne_original = ne
+  get_clique_size = function(units) {
+    ne_temp = matrix(ne_original[units,], ncol=ncol(ne_original))
+    sum(apply(ne_temp^2, 2, prod)) # the apply() gives 1 for assignments which all focals are connected to.
+  }
+  get_clique = function(units) {
+    ne_temp = matrix(ne_original[units,], ncol=ncol(ne_original))
+    a = apply(ne_temp^2, 2, prod) # =1 for assignments which all focals are connected to.
+    keep_ass = which(a==1)
+    return(ne_original[units, keep_ass])
+  }
+
+  while(CONT) {
+    # print(paste("Dim of NE=",dim(ne)))
+    units = as.numeric(rownames(ne))  # 2, 5, 6, ...
+    ass = as.numeric(colnames(ne))
+
+    # degree = as.numeric(rowSums(ne))
+    # rand_id = sample(1:length(units), 1, prob = degree) # random unit
+    rand_id = sample(1:length(units), 1) # select a random unit, only an index of that unit but not rowname.
+    focal_unit = units[rand_id]  # rowname of that randomly selected unit.
+
+    # print(paste("Select", focal_unit)) # unit name.
+    iass_remove = which(ne[rand_id,]==0)  # remove assignments that are not connected to this randomly selected unit.
+
+    ne = ne[-c(rand_id),-iass_remove]
+
+    focal_units = c(focal_units, focal_unit)  # add this unit to the set of focal units.
+
+    nsize = get_clique_size(focal_units)
+    if(nsize > num_ass) {
+      # print(paste("Added focal. Total", length(focal_units),"focal units. Clique size=", nsize,'\n'))
+    } else { # the algorithm ends if after adding this unit, num of assignments in the biclique is below num_ass
+      focal_units = setdiff(focal_units, focal_unit)
+      CONT = FALSE
+    }
+  }
+
+  focal_ass = as.numeric(colnames(ne))
+  clique = get_clique(focal_units)
+  return(list(clique=clique))
+}
+
+#' Decomposing Null Exposure Graph Using the Greedy Algorithm
+#'
+#' Outputs a biclique decomposition of the null-exposure graph using the greedy algorithm
+#' proposed above. The resulting decomposition paritions the assignment space,
+#' while the unit space may overlap.
+#'
+#' @param ne The null-exposure graph
+#' @param Zobs_id The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.
+#' @param num_ass Controls the minimum number of focal assignments in the biclique found
+#' by the algorithm (algorithm runtime is sensitive to this value).
+#' @param stop_at_Zobs A Boolean indicating whether the decomposition algorithm should stop when the clique containing the observed assignment is found.
+#' @return If \code{stop_at_Zobs} is \code{TRUE}, a matrix representing the clique to condition upon.
+#' If \code{stop_at_Zobs} is \code{FALSE}, a list containing the clique decomposition of the null-exposure graph.
+#' @export
+cliquedecom_greedy = function(ne, Zobs_id, num_ass, stop_at_Zobs){
+
+  iremove = which(rowSums(ne!=0)==0)  # removes isolated units.
+  if(length(iremove)!=0){ ne = ne[-iremove,] }
+
+  cc = 1
+  CONT=TRUE
+  allcliques = list()
+
+  while(CONT){
+    test = greedy_decom(ne,num_ass)
+    clique = test$clique
+    focalass = colnames(clique)
+    zobs_there = which(focalass==Zobs_id)
+    if(stop_at_Zobs){ if(length(zobs_there)!=0){ CONT=FALSE } } # see whether selected clique contains Zobs
+    if(!stop_at_Zobs){  }
+    iass_remove = match(focalass,colnames(ne))
+    ne = ne[,-iass_remove]
+    cat('found greedy clique',cc,'\n')
+    allcliques[[cc]] = clique
+    if(dim(ne)[2]<=num_ass){ # when remaining cols not enough to do the greedy algo.
+      units_leftover = which(rowSums(ne^2)==dim(ne^2)[2])
+      allcliques[[cc+1]] = ne[units_leftover,]
+      CONT=FALSE
+    }
+    cc = cc+1
+  }
+
+  if(stop_at_Zobs){
+    returnlist = clique
+  } else {returnlist = allcliques}
+
+  return(returnlist)
+}
+
+
 
 #' Generating distance matrix.
 #'

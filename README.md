@@ -55,8 +55,12 @@ Y_a = rnorm(dim(Z)[1])
 Y_b = Y_a + 0.2
 Y = out_Yobs(Z_a[,1],Z_b[,1],Y_a,Y_b)
 
-# run the test
-CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, minr=15, minc=15)
+# run the test using Bimax to decompose the null-exposure graph
+CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, decom='bimax', minr=15, minc=15)
+
+# alternatively, we can use a greedy algorithm to do decomposition by specifying decom
+CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, decom='greedy', minass=15)
+
 ```
 
 ## Example: Clustered Inference
@@ -84,7 +88,10 @@ Z_b = Zprime_mat==0  # individuals in untreated households, "controlled"
 simdat = out_bassefeller(N, K, Zprime_mat[, Zobs_id],tau_main = 0.4)
 Yobs = simdat$Yobs
 
-# run the test
-CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, minr=20, minc=20)
+# run the test using Bimax
+CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, decom='bimax', minr=20, minc=20)
+
+# again, we can use the greedy algorithm as follows:
+CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, decom='greedy', minass=20)
 
 ```
