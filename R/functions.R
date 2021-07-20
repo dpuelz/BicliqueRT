@@ -10,7 +10,7 @@
 #' @param ... Other stuff ...
 #'
 #' @return A list of items summarizing the randomization test. If for some focal assignments
-#' in the a biclique that contains \code{Zobs}, exposures for each unit are the same, it will
+#' in the biclique that contains \code{Zobs}, exposures for each unit are the same, it will
 #' contain an error message, and the test decision will be \code{NA}.
 #' @examples
 #' # Spatial interference
