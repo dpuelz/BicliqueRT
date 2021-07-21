@@ -14,7 +14,7 @@ library(devtools)
 install_github("dpuelz/BicliqueRT")
 ```
 
-## Example: Spatial Inference
+## Example: Spatial Interference
 The following simulation example illustrates spatial inference on a small synthetic network with 500 nodes:
 
 ```R
@@ -63,7 +63,7 @@ CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, decom='greedy', minass=15)
 
 ```
 
-## Example: Clustered Inference
+## Example: Clustered Interference
 The following simulation example illustrates clustered inference with 2000 individuals equally divided into 500 clusters:
 
 ```R
