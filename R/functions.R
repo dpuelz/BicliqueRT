@@ -94,7 +94,7 @@ clique_test = function(Y, Z, Z_a, Z_b, Zobs_id, decom='bimax', ...){
   # decompose the null-exposure graph
   cat("decompose the null-exposure graph ... \n")
   if (decom == 'bimax'){
-    decomp = out_clique_decomposition(NEgraph, Zobs_id,
+    decomp = out_clique_decomposition_bimax(NEgraph, Zobs_id,
                                       minr=addparam$minr, minc=addparam$minc, stop_at_Zobs)
     if(stop_at_Zobs){
       conditional_clique = decomp
@@ -102,7 +102,7 @@ clique_test = function(Y, Z, Z_a, Z_b, Zobs_id, decom='bimax', ...){
   }
 
   if (decom == 'greedy'){
-    decomp = cliquedecom_greedy(NEgraph, Zobs_id, num_ass=addparam$minass, stop_at_Zobs)
+    decomp = out_clique_decomposition_greedy(NEgraph, Zobs_id, num_ass=addparam$minass, stop_at_Zobs)
     if(stop_at_Zobs){
       conditional_clique = decomp
       } else {conditional_clique = out_clique(Zobs_id,decomp)}
@@ -123,18 +123,18 @@ clique_test = function(Y, Z, Z_a, Z_b, Zobs_id, decom='bimax', ...){
   rtest_out = list(tobs=tobs,tvals=tvals)
   decision = out_pval(rtest_out,ret_pval,alpha=0.05)
 
-  valid_clique <- apply(conditional_clique, 2, function(x) length(unique(x))==1)
-  if (sum(valid_clique)!=0){
-    cat("The biclique containing Zobs is not valid \n")
-    valid_clique <- "The biclique containing Zobs is not valid "
+  check_clique_unique <- apply(conditional_clique, 2, function(x) length(unique(x))==1)
+  if (sum(check_clique_unique)!=0){
+    cat("The biclique containing Zobs contains only one exposure for some focal assignment, and therefore the result is a powerless test \n")
+    check_clique_unique <- "Powerless test, because the biclique containing Zobs contains only one exposure for some focal assignment"
   } else {
-    valid_clique <- c()
+    check_clique_unique <- c()
   }
 
   # organize into return list
   retlist = list(decision=decision,ret_pval=ret_pval,tobs=tobs,
                  tvals=tvals,focal_units=focal_units,focal_assignments=focal_assignments,
-                 NEgraph=NEgraph,warnings=valid_clique)
+                 NEgraph=NEgraph,warnings=check_clique_unique)
   retlist
 }
 
@@ -353,7 +353,7 @@ out_clique = function(Zobs_id,decomp){
 #'
 #' @return If \code{stop_at_Zobs} is \code{TRUE}, a matrix representing the clique to condition upon. If \code{stop_at_Zobs} is \code{FALSE}, a list containing the clique decomposition of the null-exposure graph.
 #' @export
-out_clique_decomposition = function(NEgraph,Zobs_id,minr,minc,stop_at_Zobs=TRUE){
+out_clique_decomposition_bimax = function(NEgraph,Zobs_id,minr,minc,stop_at_Zobs=TRUE){
 
   iremove = which(rowSums(NEgraph!=0)==0)  # removes isolated units.
   if(length(iremove)!=0){ NEgraph = NEgraph[-iremove,] }
@@ -403,42 +403,42 @@ out_clique_decomposition = function(NEgraph,Zobs_id,minr,minc,stop_at_Zobs=TRUE)
 #' This function returns a biclique in a null-exposure graph using a greedy algorithm. The
 #' minimum number of focal assignments in the biclique is \code{num_ass}.
 #'
-#' @param ne The null-exposure graph
+#' @param NEgraph The null-exposure graph we want to decompose.
 #' @param num_ass Controls the minimum number of focal assignments in the biclique found
 #' by the algorithm (algorithm runtime is sensitive to this value).
-#' @return A biclique of the input null-exposure graph \code{ne}.
+#' @return A biclique of the input null-exposure graph \code{NEgraph}.
 #' @export
-greedy_decom = function(ne, num_ass){
+out_greedy_decom = function(NEgraph, num_ass){
   focal_units = c() # set of focal units
   focal_ass = c() # set of focal assignments
 
   CONT = TRUE
-  ne_original = ne
+  NEgraph_original = NEgraph
   get_clique_size = function(units) {
-    ne_temp = matrix(ne_original[units,], ncol=ncol(ne_original))
+    ne_temp = matrix(NEgraph_original[units,], ncol=ncol(NEgraph_original))
     sum(apply(ne_temp^2, 2, prod)) # the apply() gives 1 for assignments which all focals are connected to.
   }
   get_clique = function(units) {
-    ne_temp = matrix(ne_original[units,], ncol=ncol(ne_original))
+    ne_temp = matrix(NEgraph_original[units,], ncol=ncol(NEgraph_original))
     a = apply(ne_temp^2, 2, prod) # =1 for assignments which all focals are connected to.
     keep_ass = which(a==1)
-    return(ne_original[units, keep_ass])
+    return(NEgraph_original[units, keep_ass])
   }
 
   while(CONT) {
-    # print(paste("Dim of NE=",dim(ne)))
-    units = as.numeric(rownames(ne))  # 2, 5, 6, ...
-    ass = as.numeric(colnames(ne))
+    # print(paste("Dim of NEgraph=",dim(NEgraph)))
+    units = as.numeric(rownames(NEgraph))  # 2, 5, 6, ...
+    ass = as.numeric(colnames(NEgraph))
 
-    # degree = as.numeric(rowSums(ne))
+    # degree = as.numeric(rowSums(NEgraph))
     # rand_id = sample(1:length(units), 1, prob = degree) # random unit
     rand_id = sample(1:length(units), 1) # select a random unit, only an index of that unit but not rowname.
     focal_unit = units[rand_id]  # rowname of that randomly selected unit.
 
     # print(paste("Select", focal_unit)) # unit name.
-    iass_remove = which(ne[rand_id,]==0)  # remove assignments that are not connected to this randomly selected unit.
+    iass_remove = which(NEgraph[rand_id,]==0)  # remove assignments that are not connected to this randomly selected unit.
 
-    ne = ne[-c(rand_id),-iass_remove]
+    NEgraph = NEgraph[-c(rand_id),-iass_remove]
 
     focal_units = c(focal_units, focal_unit)  # add this unit to the set of focal units.
 
@@ -451,7 +451,7 @@ greedy_decom = function(ne, num_ass){
     }
   }
 
-  focal_ass = as.numeric(colnames(ne))
+  focal_ass = as.numeric(colnames(NEgraph))
   clique = get_clique(focal_units)
   return(list(clique=clique))
 }
@@ -462,7 +462,7 @@ greedy_decom = function(ne, num_ass){
 #' proposed above. The resulting decomposition paritions the assignment space,
 #' while the unit space may overlap.
 #'
-#' @param ne The null-exposure graph
+#' @param NEgraph The null-exposure graph
 #' @param Zobs_id The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.
 #' @param num_ass Controls the minimum number of focal assignments in the biclique found
 #' by the algorithm (algorithm runtime is sensitive to this value).
@@ -470,29 +470,29 @@ greedy_decom = function(ne, num_ass){
 #' @return If \code{stop_at_Zobs} is \code{TRUE}, a matrix representing the clique to condition upon.
 #' If \code{stop_at_Zobs} is \code{FALSE}, a list containing the clique decomposition of the null-exposure graph.
 #' @export
-cliquedecom_greedy = function(ne, Zobs_id, num_ass, stop_at_Zobs){
+out_clique_decomposition_greedy = function(NEgraph, Zobs_id, num_ass, stop_at_Zobs){
 
-  iremove = which(rowSums(ne!=0)==0)  # removes isolated units.
-  if(length(iremove)!=0){ ne = ne[-iremove,] }
+  iremove = which(rowSums(NEgraph!=0)==0)  # removes isolated units.
+  if(length(iremove)!=0){ NEgraph = NEgraph[-iremove,] }
 
   cc = 1
-  CONT=TRUE
+  CONT = TRUE
   allcliques = list()
 
   while(CONT){
-    test = greedy_decom(ne,num_ass)
+    test = out_greedy_decom(NEgraph, num_ass)
     clique = test$clique
     focalass = colnames(clique)
     zobs_there = which(focalass==Zobs_id)
     if(stop_at_Zobs){ if(length(zobs_there)!=0){ CONT=FALSE } } # see whether selected clique contains Zobs
     if(!stop_at_Zobs){  }
-    iass_remove = match(focalass,colnames(ne))
-    ne = ne[,-iass_remove]
+    iass_remove = match(focalass,colnames(NEgraph))
+    NEgraph = NEgraph[,-iass_remove]
     cat('found greedy clique',cc,'\n')
     allcliques[[cc]] = clique
-    if(dim(ne)[2]<=num_ass){ # when remaining cols not enough to do the greedy algo.
-      units_leftover = which(rowSums(ne^2)==dim(ne^2)[2])
-      allcliques[[cc+1]] = ne[units_leftover,]
+    if(dim(NEgraph)[2]<=num_ass){ # when remaining cols not enough to do the greedy algo.
+      units_leftover = which(rowSums(NEgraph^2)==dim(NEgraph^2)[2])
+      allcliques[[cc+1]] = NEgraph[units_leftover,]
       CONT=FALSE
     }
     cc = cc+1
