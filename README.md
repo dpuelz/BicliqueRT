@@ -77,7 +77,7 @@ library(doParallel)
 numcores = detectCores()
 clst = makeCluster(numcores[1]-1) 
 registerDoParallel(clst)
-CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, decom='greedy', ret_ci=TRUE, ci_method='grid', minass=15)
+CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, decom='bimax', ret_ci=TRUE, ci_method='grid', minr=15, minc=15)
 ```
 
 ## Example: Clustered Interference
