@@ -51,16 +51,33 @@ Z_a = sparsify((Z_a>=a_threshold))
 Z_b = sparsify((Z_b<b_threshold))
 
 # simulating an outcome vector
-Y_a = rnorm(dim(Z)[1])
-Y_b = Y_a + 0.2
-Y = out_Yobs(Z_a[,1],Z_b[,1],Y_a,Y_b)
+Y = rnorm(dim(Z)[1])
 
 # run the test using Bimax to decompose the null-exposure graph
-CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, decom='bimax', minr=15, minc=15)
+# tau=0.2 is the tau in the null: Y_i(b) = Y_i(a) + tau for all i.
+CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, tau=0.2, decom='bimax', minr=15, minc=15)
 
 # alternatively, we can use a greedy algorithm to do decomposition by specifying decom
-CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, decom='greedy', minass=15)
+CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, tau=0.2, decom='greedy', minass=15)
+```
+Sometimes we want to replace the outcome vector Y with an adjusted version. We can pass in Xadj and specifying adj_Y=TRUE. Currently we only support adjusing Y by taking the residuals of a linear regression on Xadj, but users can also pre-adjust it before using the clique test function.
+```R
+Xadj = matrix(rnorm(dim(Z)[1]*4), ncol=4)
+CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, Xadj=Xadj, tau=0.2, decom='bimax', minr=15, minc=15, adj_Y=TRUE)
+```
+To get the CI, we can pass in ret_ci=TRUE, and it's not necessary to specify tau in this case:
+```R
+CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, decom='bimax', ret_ci=TRUE, ci_method='grid', minr=15, minc=15)
+```
+By default, we use the "grid" method to calculate CI, we provide another method "bisection". 
+We can also do parallelization for the grid method by specifying Cluster beforehand:
 
+```R
+library(doParallel)
+numcores = detectCores()
+clst = makeCluster(numcores[1]-1) 
+registerDoParallel(clst)
+CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, decom='greedy', ret_ci=TRUE, ci_method='grid', minass=15)
 ```
 
 ## Example: Clustered Interference
@@ -89,9 +106,9 @@ simdat = out_bassefeller(N, K, Zprime_mat[, Zobs_id],tau_main = 0.4)
 Yobs = simdat$Yobs
 
 # run the test using Bimax
-CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, decom='bimax', minr=20, minc=20)
+CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, tau=0, decom='bimax', minr=20, minc=20)
 
 # again, we can use the greedy algorithm as follows:
-CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, decom='greedy', minass=20)
+CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, tau=0, decom='greedy', minass=20)
 
 ```
