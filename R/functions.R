@@ -5,8 +5,13 @@
 #' @param Z_a A binary matrix with dimension (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{a} under assignment j. Please see example.
 #' @param Z_b A binary matrix with (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{b} under assignment j. Please see example.
 #' @param Zobs_id The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.
+#' @param Xadj The covariates that might affect Y. If not \code{NULL}, will replace \code{Y} by the residuals from the linear regression of \code{Y} on \code{Xadj}. Note that users would need to add an intercept to \code{Xadj} manually if they want.
+#' To adjust \code{Xadj}, pass in \code{Y_adj=TRUE} and a non-empty \code{NULL} that has the same row numbers as \code{Y}.
+#' @param alpha The significance level. By default it's \eqn{0.05}.
+#' @param tau The \eqn{\tau} in the null \eqn{Y_i(b) = Y_i(a) + \tau} for all \eqn{i}. By default is \eqn{0}.
 #' @param decom The algorithm used to calculate the biclique decomposition. Currently supported algorithms
 #' are "bimax" and "greedy".
+#' @param ret_ci Whether calculates the \eqn{1-\alpha} confidence interval or not. Default is \code{FALSE}.
 #' @param ... Other stuff ...
 #'
 #' @return A list of items summarizing the randomization test. If for some focal assignments
@@ -79,13 +84,15 @@
 #' CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, decom='greedy', minass=20)
 #'
 #' @export
-clique_test = function(Y, Z, Z_a, Z_b, Zobs_id, decom='bimax', ...){
+clique_test = function(Y, Z, Z_a, Z_b, Zobs_id, Xadj=NULL, alpha=0.05, tau=0,
+                       decom='bimax', ret_ci=FALSE, ci_dec=2, ci_method='grid', ...){
   addparam = list(...) # catch variable parameters
 
   # setting default values if they do not exist
-  if(!exists("exclude_treated")){ exclude_treated=TRUE }
-  if(!exists("stop_at_Zobs")){ stop_at_Zobs=FALSE }
-  if(!exists("ret_pval")){ ret_pval=TRUE }
+  if(is.null(addparam$exclude_treated)){ exclude_treated=TRUE } else { exclude_treated=addparam$exclude_treated }
+  if(is.null(addparam$stop_at_Zobs)){ stop_at_Zobs=FALSE } else { stop_at_Zobs= addparam$stop_at_Zobs}
+  if(is.null(addparam$ret_pval)){ ret_pval=TRUE } else { ret_pval=addparam$ret_pval }
+  if(is.null(addparam$adj_Y)){ adj_Y=FALSE } else { adj_Y=(addparam$adj_Y)&(!is.null(Xadj)) } # is TRUE iff we specify it and Xadj is not null
 
   # make the null-exposure graph
   cat("construct the null-exposure graph ... \n")
@@ -111,18 +118,14 @@ clique_test = function(Y, Z, Z_a, Z_b, Zobs_id, decom='bimax', ...){
   focal_units = as.numeric(rownames(conditional_clique)) # a list of row names
   focal_assignments = as.numeric(colnames(conditional_clique)) # a list of column names
 
-  # restrict Y to clique
-  Y.clique = Y[focal_units]
 
-  # run the test
-  cat("\n")
-  cat("run the clique-based randomization test ... \n")
-  Zobs_cliqid = which(Zobs_id==focal_assignments)
-  tobs = ate(conditional_clique[, Zobs_cliqid], Y.clique)
-  tvals = apply(as.matrix(conditional_clique[, -Zobs_cliqid]), 2, function(z) ate(z, Y.clique))
-  rtest_out = list(tobs=tobs,tvals=tvals)
-  decision = out_pval(rtest_out,ret_pval,alpha=0.05)
+  # adjust for covariates, if any
+  # currently can only be adjusted by linear regression
+  if (adj_Y){
+    Y = c(Y - Xadj %*% solve(t(Xadj) %*% Xadj) %*% t(Xadj) %*% Y)
+  }
 
+  # check whether the conditional_clique has non-unique exposure for each focal assignment, which is essential for the test.
   check_clique_unique <- apply(conditional_clique, 2, function(x) length(unique(x))==1)
   if (sum(check_clique_unique)!=0){
     cat("The biclique containing Zobs contains only one exposure for some focal assignment, and therefore the result is a powerless test \n")
@@ -131,11 +134,117 @@ clique_test = function(Y, Z, Z_a, Z_b, Zobs_id, decom='bimax', ...){
     check_clique_unique <- c()
   }
 
-  # organize into return list
-  retlist = list(decision=decision,ret_pval=ret_pval,tobs=tobs,
-                 tvals=tvals,focal_units=focal_units,focal_assignments=focal_assignments,
-                 NEgraph=NEgraph,warnings=check_clique_unique)
-  retlist
+  if (!ret_ci){
+    # adjust Y for null hypothesis
+    Y = out_Yobs(Z_a, Z_b, Y, Y+tau)
+
+    # restrict Y to clique
+    Y.clique = Y[focal_units]
+
+    # run the test
+    cat("\n")
+    cat("run the clique-based randomization test ... \n")
+    Zobs_cliqid = which(Zobs_id==focal_assignments)
+    tobs = ate(conditional_clique[, Zobs_cliqid], Y.clique)
+    tvals = apply(as.matrix(conditional_clique[, -Zobs_cliqid]), 2, function(z) ate(z, Y.clique))
+    rtest_out = list(tobs=tobs, tvals=tvals)
+    decision = out_pval(rtest_out, ret_pval, alpha)
+
+    # organize into return list
+    retlist = list(decision=decision, ret_pval=ret_pval, tobs=tobs,
+                   tvals=tvals, focal_units=focal_units, focal_assignments=focal_assignments,
+                   NEgraph=NEgraph, warnings=check_clique_unique)
+    retlist
+  } else {
+
+    Zobs_cliqid = which(Zobs_id==focal_assignments)
+    if (is.null(addparam$ci_ub)) {ci_ub = as.numeric(quantile(Y[Z_b[,Zobs_id]], 0.95)-quantile(Y[Z_a[,Zobs_id]], 0.05))} else {ci_ub = addparam$ci_ub}
+    if (is.null(addparam$ci_lb)) {ci_lb = as.numeric(quantile(Y[Z_b[,Zobs_id]], 0.05)-quantile(Y[Z_a[,Zobs_id]], 0.95))} else {ci_lb = addparam$ci_lb}
+    ci_ub = round(ci_ub, ci_dec) + 5*10^(-ci_dec) # ci_dec is an integer specifying decimals for CI. By default is 2.
+    ci_lb = round(ci_lb, ci_dec) - 5*10^(-ci_dec)
+
+    if (ci_method == "grid"){
+      cat("\n")
+      cat("find the confidence interval for the clique-based randomization test using grid method... \n")
+      ci_grid = seq(ci_lb, ci_ub, by=10^(-ci_dec)) # generate grids for CI
+      #ci = rep(1, length(ci_grid))
+
+      ci = foreach::foreach(igrid = 1:length(ci_grid), .combine='c', .inorder=TRUE) %dopar% {
+        tau_temp = ci_grid[igrid]
+        Y_temp = out_Yobs(Z_a, Z_b, Y, Y+tau_temp)
+        Y_clique_temp = Y_temp[focal_units]
+        tobs_temp = ate(conditional_clique[, Zobs_cliqid], Y_clique_temp)
+        tvals_temp = apply(as.matrix(conditional_clique[, -Zobs_cliqid]), 2, function(z) ate(z, Y_clique_temp))
+        rtest_out_temp = list(tobs=tobs_temp, tvals=tvals_temp)
+        decision_temp = out_pval(rtest_out_temp, FALSE, alpha)
+        decision_temp
+      }
+
+      ci_ub_out = ci_grid[max(which(ci==0))]
+      ci_lb_out = ci_grid[min(which(ci==0))]
+    } else if (ci_method == "bisection"){
+      cat("\n")
+      cat("find the confidence interval for the clique-based randomization test using bisection method... \n")
+
+      # find upper bound
+      err = 2 * 10^(-ci_dec)
+      ci_ub_bis = ci_ub
+      ci_lb_bis = ci_lb
+      ci_ub_out = (ci_ub_bis + ci_lb_bis) / 2
+      while (err>10^(-ci_dec-1)){ # err is one order less than ci_dec, so that we can round it by ci_dec
+        tau_temp = ci_ub_out
+        Y_temp = out_Yobs(Z_a, Z_b, Y, Y+tau_temp)
+        Y_clique_temp = Y_temp[focal_units]
+        tobs_temp = ate(conditional_clique[, Zobs_cliqid], Y_clique_temp)
+        tvals_temp = apply(as.matrix(conditional_clique[, -Zobs_cliqid]), 2, function(z) ate(z, Y_clique_temp))
+        rtest_out_temp = list(tobs=tobs_temp, tvals=tvals_temp)
+        decision_temp = out_pval(rtest_out_temp, FALSE, alpha)
+        if (decision_temp == 0){
+          ci_ub_bis = ci_ub_bis
+          ci_lb_bis = ci_ub_out
+        } else {
+          ci_ub_bis = ci_ub_out
+          ci_lb_bis = ci_lb_bis
+        }
+        err = abs(ci_ub_out - (ci_ub_bis + ci_lb_bis) / 2)
+        ci_ub_out = (ci_ub_bis + ci_lb_bis) / 2
+      }
+
+      # find lower bound
+      err = 2 * 10^(-ci_dec)
+      ci_ub_bis = ci_ub
+      ci_lb_bis = ci_lb
+      ci_lb_out = (ci_ub_bis + ci_lb_bis) / 2
+      while (err>10^(-ci_dec-1)){
+        tau_temp = ci_lb_out
+        Y_temp = out_Yobs(Z_a, Z_b, Y, Y+tau_temp)
+        Y_clique_temp = Y_temp[focal_units]
+        tobs_temp = ate(conditional_clique[, Zobs_cliqid], Y_clique_temp)
+        tvals_temp = apply(as.matrix(conditional_clique[, -Zobs_cliqid]), 2, function(z) ate(z, Y_clique_temp))
+        rtest_out_temp = list(tobs=tobs_temp, tvals=tvals_temp)
+        decision_temp = out_pval(rtest_out_temp, FALSE, alpha)
+        if (decision_temp == 0){
+          ci_ub_bis = ci_lb_out
+          ci_lb_bis = ci_lb_bis
+        } else {
+          ci_ub_bis = ci_ub_bis
+          ci_lb_bis = ci_lb_out
+        }
+        err = abs(ci_lb_out - (ci_ub_bis + ci_lb_bis) / 2)
+        ci_lb_out = (ci_ub_bis + ci_lb_bis) / 2
+      }
+
+    }
+    ci_lb_out = round(ci_lb_out, ci_dec) # err is one order less than ci_dec, hence can round it by ci_dec
+    ci_ub_out = round(ci_ub_out, ci_dec)
+    cat(sprintf("The %s%% confidence interval is [%s,%s] \n", round((1-alpha)*100, 4), ci_lb_out, ci_ub_out))
+
+    retlist = list(ci=list(lb=ci_lb_out, ub=ci_ub_out),
+                   focal_units=focal_units, focal_assignments=focal_assignments,
+                   NEgraph=NEgraph, warnings=check_clique_unique)
+    retlist
+  }
+
 }
 
 
@@ -551,7 +660,7 @@ sparsify <- function(mat){
 
 #' Calculating average treatment effect
 #'
-#' Returns difference in means between exposures \code{b} and \code{a}, coded as \code{1} and \code{-1}, respectively.
+#' Returns difference in means between exposures \code{b} and \code{a} (as \code{b} - \code{a}), coded as \code{1} and \code{-1}, respectively.
 #'
 #' @param Z The treatment vector. Entries of \code{Z} are \code{1} or \code{-1},
 #'  indicating that under this treatment, individual is exposed to \code{b} or \code{a}
@@ -562,7 +671,7 @@ sparsify <- function(mat){
 ate = function(Z,Y){
   ind1 = which(Z==1)
   ind2 = which(Z==-1)
-  mean(Y[ind1])-mean(Y[ind2])
+  mean(Y[ind1]) - mean(Y[ind2])
 }
 
 

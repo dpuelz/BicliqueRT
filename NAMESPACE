@@ -1,6 +1,7 @@
 importFrom("stats", "rnorm", "runif", "lm", "coef","rbinom")
 importFrom("Matrix", "Matrix")
 importFrom("biclust", "biclust", "bicluster", "BCBimax")
+importFrom("foreach", "%dopar%")
 export(ate)
 export(clique_test)
 export(one_sided_test)
