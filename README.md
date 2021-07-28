@@ -75,9 +75,10 @@ We can also do parallelization for the grid method by specifying Cluster beforeh
 ```R
 library(doParallel)
 numcores = detectCores()
-clst = makeCluster(numcores[1]-1) 
+clst = makeCluster(numcores-1) # try not to use all cores in order not to impose great burden on the computer
 registerDoParallel(clst)
 CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, decom='bimax', ret_ci=TRUE, ci_method='grid', minr=15, minc=15)
+stopCluster(clst)
 ```
 
 ## Example: Clustered Interference
