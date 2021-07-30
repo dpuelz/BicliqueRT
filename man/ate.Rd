@@ -16,5 +16,5 @@ indicating that under this treatment, individual is exposed to \code{b} or \code
 The differenence in means between exposure contrasts \code{b} and \code{a}.
 }
 \description{
-Returns difference in means between exposures \code{b} and \code{a}, coded as \code{1} and \code{-1}, respectively.
+Returns difference in means between exposures \code{b} and \code{a} (as \code{b} - \code{a}), coded as \code{1} and \code{-1}, respectively.
 }

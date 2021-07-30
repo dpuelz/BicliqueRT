@@ -4,7 +4,21 @@
 \alias{clique_test}
 \title{The main randomization test function.}
 \usage{
-clique_test(Y, Z, Z_a, Z_b, Zobs_id, decom = "bimax", ...)
+clique_test(
+  Y,
+  Z,
+  Z_a,
+  Z_b,
+  Zobs_id,
+  Xadj = NULL,
+  alpha = 0.05,
+  tau = 0,
+  decom = "bimax",
+  ret_ci = FALSE,
+  ci_dec = 2,
+  ci_method = "grid",
+  ...
+)
 }
 \arguments{
 \item{Y}{The observed outcome vector.}
@@ -17,8 +31,17 @@ clique_test(Y, Z, Z_a, Z_b, Zobs_id, decom = "bimax", ...)
 
 \item{Zobs_id}{The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.}
 
+\item{Xadj}{The covariates that might affect Y. If not \code{NULL}, will replace \code{Y} by the residuals from the linear regression of \code{Y} on \code{Xadj}. Note that users would need to add an intercept to \code{Xadj} manually if they want.
+To adjust \code{Xadj}, pass in \code{Y_adj=TRUE} and a non-empty \code{NULL} that has the same row numbers as \code{Y}.}
+
+\item{alpha}{The significance level. By default it's \eqn{0.05}.}
+
+\item{tau}{The \eqn{\tau} in the null \eqn{Y_i(b) = Y_i(a) + \tau} for all \eqn{i}. By default is \eqn{0}.}
+
 \item{decom}{The algorithm used to calculate the biclique decomposition. Currently supported algorithms
 are "bimax" and "greedy".}
+
+\item{ret_ci}{Whether calculates the \eqn{1-\alpha} confidence interval or not. Default is \code{FALSE}.}
 
 \item{...}{Other stuff ...}
 }
