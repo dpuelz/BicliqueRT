@@ -60,7 +60,7 @@ CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, tau=0.2, decom='bimax', minr=15, mi
 # alternatively, we can use a greedy algorithm to do decomposition by specifying decom
 CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, tau=0.2, decom='greedy', minass=15)
 ```
-Sometimes we want to replace the outcome vector Y with an adjusted version. We can pass in Xadj and specifying adj_Y=TRUE. Currently we only support adjusing Y by taking the residuals of a linear regression on Xadj, but users can also pre-adjust it before using the clique test function.
+Sometimes we want to replace the outcome vector Y with an adjusted version. We can pass in Xadj and specifying adj_Y=TRUE. Currently we only support adjusting Y by taking the residuals of a linear regression on Xadj, but users can also pre-adjust it before using the clique test function.
 ```R
 Xadj = matrix(rnorm(dim(Z)[1]*4), ncol=4)
 CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, Xadj=Xadj, tau=0.2, decom='bimax', minr=15, minc=15, adj_Y=TRUE)
