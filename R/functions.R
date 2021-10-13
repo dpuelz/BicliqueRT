@@ -160,8 +160,8 @@ clique_test = function(Y, Z, Z_a, Z_b, Zobs_id, Xadj=NULL, alpha=0.05, tau=0,
     Zobs_cliqid = which(Zobs_id==focal_assignments)
     if (is.null(addparam$ci_ub)) {ci_ub = as.numeric(quantile(Y[Z_b[,Zobs_id]], 0.95)-quantile(Y[Z_a[,Zobs_id]], 0.05))} else {ci_ub = addparam$ci_ub}
     if (is.null(addparam$ci_lb)) {ci_lb = as.numeric(quantile(Y[Z_b[,Zobs_id]], 0.05)-quantile(Y[Z_a[,Zobs_id]], 0.95))} else {ci_lb = addparam$ci_lb}
-    ci_ub = round(ci_ub, ci_dec) + 5*10^(-ci_dec) # ci_dec is an integer specifying decimals for CI. By default is 2.
-    ci_lb = round(ci_lb, ci_dec) - 5*10^(-ci_dec)
+    ci_ub = round(ci_ub, ci_dec) + 10^(-ci_dec+1) # ci_dec is an integer specifying decimals for CI. By default is 2.
+    ci_lb = round(ci_lb, ci_dec) - 10^(-ci_dec+1)
 
     if (ci_method == "grid"){
       cat("\n")
@@ -186,10 +186,29 @@ clique_test = function(Y, Z, Z_a, Z_b, Zobs_id, Xadj=NULL, alpha=0.05, tau=0,
       cat("\n")
       cat("find the confidence interval for the clique-based randomization test using bisection method... \n")
 
+      # pre-selection of ub
+      ci_grid = seq(ci_lb, ci_ub, by=10^(-ci_dec+1))
+
+      stop_ub_init = FALSE
+      ub_idx = length(ci_grid)
+      ub_init = ci_ub
+      while (!stop_ub_init){
+        ub_idx = ub_idx - 1
+        ub_init_prev = ub_init
+        ub_init = tau_temp = ci_grid[ub_idx]
+        Y_temp = out_Yobs(Z_a, Z_b, Y, Y+tau_temp)
+        Y_clique_temp = Y_temp[focal_units]
+        tobs_temp = ate(conditional_clique[, Zobs_cliqid], Y_clique_temp)
+        tvals_temp = apply(as.matrix(conditional_clique[, -Zobs_cliqid]), 2, function(z) ate(z, Y_clique_temp))
+        rtest_out_temp = list(tobs=tobs_temp, tvals=tvals_temp)
+        decision_temp = out_pval(rtest_out_temp, FALSE, alpha)
+        if ((decision_temp == 0) | (ub_idx == 1)){stop_ub_init = TRUE}
+      }
+
       # find upper bound
       err = 2 * 10^(-ci_dec)
-      ci_ub_bis = ci_ub
-      ci_lb_bis = ci_lb
+      ci_ub_bis = ub_init_prev
+      ci_lb_bis = ub_init
       ci_ub_out = (ci_ub_bis + ci_lb_bis) / 2
       while (err>10^(-ci_dec-1)){ # err is one order less than ci_dec, so that we can round it by ci_dec
         tau_temp = ci_ub_out
@@ -210,10 +229,27 @@ clique_test = function(Y, Z, Z_a, Z_b, Zobs_id, Xadj=NULL, alpha=0.05, tau=0,
         ci_ub_out = (ci_ub_bis + ci_lb_bis) / 2
       }
 
+      # pre-selection of lb
+      stop_lb_init = FALSE
+      lb_idx = 1
+      lb_init = ci_lb
+      while (!stop_lb_init){
+        lb_idx = lb_idx + 1
+        lb_init_prev = lb_init
+        lb_init = tau_temp = ci_grid[lb_idx]
+        Y_temp = out_Yobs(Z_a, Z_b, Y, Y+tau_temp)
+        Y_clique_temp = Y_temp[focal_units]
+        tobs_temp = ate(conditional_clique[, Zobs_cliqid], Y_clique_temp)
+        tvals_temp = apply(as.matrix(conditional_clique[, -Zobs_cliqid]), 2, function(z) ate(z, Y_clique_temp))
+        rtest_out_temp = list(tobs=tobs_temp, tvals=tvals_temp)
+        decision_temp = out_pval(rtest_out_temp, FALSE, alpha)
+        if ((decision_temp == 0) | (lb_idx == length(ci_grid))){stop_lb_init = TRUE}
+      }
+
       # find lower bound
       err = 2 * 10^(-ci_dec)
-      ci_ub_bis = ci_ub
-      ci_lb_bis = ci_lb
+      ci_ub_bis = lb_init
+      ci_lb_bis = lb_init_prev
       ci_lb_out = (ci_ub_bis + ci_lb_bis) / 2
       while (err>10^(-ci_dec-1)){
         tau_temp = ci_lb_out
@@ -234,9 +270,25 @@ clique_test = function(Y, Z, Z_a, Z_b, Zobs_id, Xadj=NULL, alpha=0.05, tau=0,
         ci_lb_out = (ci_ub_bis + ci_lb_bis) / 2
       }
 
+      if (ub_idx == 1){
+        cat("The upper bound is below the pre-set lower bound")
+        ci_ub_out = ci_lb
+      } else if (ub_idx == length(ci_grid) - 1){
+        cat("The upper bound is above the pre-set upper bound")
+        ci_ub_out = ci_ub
+      } else {ci_ub_out = round(ci_ub_out, ci_dec)} # err is one order less than ci_dec, hence can round it by ci_dec
+
+      if (lb_idx == 2){
+        cat("The lower bound is below the pre-set lower bound")
+        ci_lb_out = ci_lb
+      } else if (lb_idx == length(ci_grid)){
+        cat("The lower bound is above the pre-set upper bound")
+        ci_lb_out = ci_ub
+      } else {ci_lb_out = round(ci_lb_out, ci_dec)}
+
+
     }
-    ci_lb_out = round(ci_lb_out, ci_dec) # err is one order less than ci_dec, hence can round it by ci_dec
-    ci_ub_out = round(ci_ub_out, ci_dec)
+
     cat(sprintf("The %s%% confidence interval is [%s,%s] \n", round((1-alpha)*100, 4), ci_lb_out, ci_ub_out))
 
     retlist = list(ci=list(lb=ci_lb_out, ub=ci_ub_out),
@@ -597,7 +649,7 @@ out_clique_decomposition_greedy = function(NEgraph, Zobs_id, num_ass, stop_at_Zo
     if(!stop_at_Zobs){  }
     iass_remove = match(focalass,colnames(NEgraph))
     NEgraph = NEgraph[,-iass_remove]
-    cat('found greedy clique',cc,'\n')
+    cat('\r','found greedy clique',cc,'...')
     allcliques[[cc]] = clique
     if(dim(NEgraph)[2]<=num_ass){ # when remaining cols not enough to do the greedy algo.
       units_leftover = which(rowSums(NEgraph^2)==dim(NEgraph^2)[2])
