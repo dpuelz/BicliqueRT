@@ -116,10 +116,13 @@ CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, tau=0, decom='greedy', minass=20)
 
 ## Example: Diagonistic graph
 A common clustered interference problems has the following structure of the experiment design:
-- Each group has a probability of `$p_g$` to be selected as the treated group
-- Individuals in the treated groups have a probability of `$p_{indi,1}$` to be treated, and individuals in the untreated groups have a probability of `$p_{indi,2}$` to be treated
-And we would like to test whether untreated individuals in untreated groups have similar outcomes to untreated individuals in treated groups. For example, see [Breza et al., 2021](https://www.nature.com/articles/s41591-021-01487-3). 
-Usually the null exposure graph of such experiment design is very "spare", in the sense that there are too few exposures to construct a large enough biclique. The `clique_diagnostic`{:.R} function can serve as a diagnostic for how large we would expect the biclique could be. The input is a (# of individuals) `$\times$ 2` matrix or data frame whose first column indicates group, and second column indicates individual ID. Given the structure of the group-individual, for different number of individuals selected, the function returns the approximate number of focal assignments of the largest possible biclique of the null exposure graph that takes the selected units as focal units. 
+- Each group has a probability of `p_group` to be selected as the treated group
+- Individuals in the treated groups have a probability of `p_indi_t` to be treated, and individuals in the untreated groups have a probability of `p_indi_nt` to be treated
+
+And we would like to test whether untreated individuals in untreated groups have similar outcomes to untreated individuals in treated groups. For example, see [Breza et al., 2021](https://www.nature.com/articles/s41591-021-01487-3).
+
+Usually the null exposure graph of such experiment design is very "spare", in the sense that there are too few exposures to construct a large enough biclique. The `clique_diagnostic` function can serve as a diagnostic for how large we would expect the biclique could be. The input is a (# of individuals) * 2 matrix or data frame whose first column indicates group, and second column indicates individual ID. Given the structure of the group-individual, for different number of individuals selected, the function returns the approximate number of focal assignments of the largest possible biclique of the null exposure graph that takes the selected units as focal units. 
+
 Below is an example illustrating the function. The group-individual structure used is the Thanksgiving campaign of [Breza et al., 2021](https://www.nature.com/articles/s41591-021-01487-3). 
 
 ```R
@@ -130,10 +133,19 @@ sample_structure[1:3,] # user_loc is county code, zip is zip code
 #2     4001 85925
 #3     4001 86505
 
+set.seed(1)
+# we try for 10000 randomizations instead of 1000 in the original article.
 clique_diag = clique_diagnostic(struc = sample_structure, p_group = 0.5, p_indi_t = 0.75, p_indi_nt = 0.25, test_check = TRUE, N = 10000) # takes about 10 min to complete
-plot(x = 2:25, y = clique_diag[-1], 'l', lty = 1, col = 'red',
-     xlab = "num focal units", ylab = "num valid focal assin", ylim = c(0,30))
-
+clique_diag
+# [1]   0.0000 934.8375 699.8063 423.9984 237.0436 128.1890  68.2642  35.5424  18.4070   9.3292
+#[11]   4.8756   2.4517   1.2431   0.6330   0.3176   0.1587   0.0819   0.0420   0.0215   0.0106
+#[21]   0.0055   0.0028   0.0014   0.0008   0.0004
 ```
+we can also plot it to see how fast it declines when we increase the number of units selected as focal units.
+```R
+plot(x = 2:25, y = clique_diag[-1], 'l', lty = 1, col = 'red',
+     xlab = "num focal units", ylab = "num of non-single focal assin ", ylim = c(0,30))
+```
+So if we want the final biclique decomposed from the null exposure graph that contains `Zobs` to have at least 12 focal units, it is likely to be very small as on average it contains only 2.45 focal assignments. If in the `Bimax` algorithm we set `minr = 12` and, say, `minc = 15`, it would take quite a long time to decompose the null exposure graph. What's worse is that it may never find such a biclique that contains `Zobs`!
 
 
