@@ -113,3 +113,9 @@ CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, tau=0, decom='bimax', minr=20, min
 CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, tau=0, decom='greedy', minass=20)
 
 ```
+
+## Example: Diagonistic graph
+When doing clustered
+
+
+
