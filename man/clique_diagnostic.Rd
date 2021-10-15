@@ -30,7 +30,7 @@ represents group ID, and the second column is the individual ID. Please see the 
 \item{fmax}{Maximum number of units to be selected to do the diagnosis. Default is 25.}
 }
 \value{
-a \code{fmax} by 2 matrix.
+an \code{fmax} by 2 matrix.
 }
 \description{
 For different number of units selected, it returns an \code{fmax} by 2 matrix,

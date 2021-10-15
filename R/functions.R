@@ -916,7 +916,7 @@ out_bassefeller = function(N, K, Zobs, tau_main,
 #' @param p_indi_nt The probability of an individual in the non-treated group being treated.
 #' @param N The number of randomizations performed.
 #' @param fmax Maximum number of units to be selected to do the diagnosis. Default is 25.
-#' @return a \code{fmax} by 2 matrix.
+#' @return an \code{fmax} by 2 matrix.
 #' @export
 clique_diagnostic = function(struc, p_group, p_indi_t, p_indi_nt, N, fmax = 25, NR = 500, Nx = 500){
   K = length(unique(struc[,1]))
@@ -925,7 +925,7 @@ clique_diagnostic = function(struc, p_group, p_indi_t, p_indi_nt, N, fmax = 25, 
   largest_clique = matrix(nrow = fmax, ncol = 2)
 
   for (f in 1:fmax){
-    cat('\r','doing diagnostic for focal units number being ',f,'...')
+    cat('\r','doing diagnostic for the number of focal units being ',f,'...')
     prob_f = 0; prob_f_val = 0
     x_rand = rmultinom(n = Nx, size = f, prob_group)
 
