@@ -140,9 +140,9 @@ A common clustered interference problems has the following structure of the expe
 
 And we would like to test whether untreated individuals in untreated groups have similar outcomes to untreated individuals in treated groups. For example, see [Breza et al., 2021](https://www.nature.com/articles/s41591-021-01487-3).
 
-Usually the null exposure graph of such experiment design is very "spare", in the sense that there are too few exposures to construct a large enough biclique. The `clique_diagnostic` function can serve as a diagnostic for how large we would expect the biclique could be. The input is a (# of individuals) * 2 matrix or data frame whose first column indicates group, and second column indicates individual ID. Given the structure of the group-individual, for different number of individuals selected, the function returns the approximate number of focal assignments of the largest possible biclique of the null exposure graph that takes the selected units as focal units. 
+Usually the null exposure graph of such experiment design is very "spare", in the sense that there are too few exposures to construct a large enough biclique. The `clique_diagnostic` function can serve as a diagnostic for how large we could expect the biclique could be. The input of the function is a (# of individuals) * 2 matrix or data frame whose first column indicates group, and second column indicates individual ID. Given the structure of the group-individual, for different number of individuals selected at random, the function returns the approximate number of focal assignments of the largest possible biclique of the null exposure graph that takes the selected units as focal units. 
 
-Below is an example illustrating the function. The group-individual structure used is the Thanksgiving campaign of [Breza et al., 2021](https://www.nature.com/articles/s41591-021-01487-3). 
+Below is an example illustrating the function. The group-individual structure used is the Thanksgiving campaign of [Breza et al., 2021](https://www.nature.com/articles/s41591-021-01487-3).
 
 ```R
 data("sample_structure")
@@ -172,6 +172,6 @@ plot(x = 2:25, y = clique_diag[-1,1], 'l', lty = 1, col = 'red',
      xlab = "num focal units", ylab = "num of focal assin ", ylim = c(0,30)) # total number of focal assignments
 lines(x = 2:25, y = clique_diag[-1,2], 'l', lty = 1, col = 'green') # number of focal assignments that have variations across focal units
 ```
-So if we want the final biclique decomposed from the null exposure graph that contains `Zobs` to have at least 12 focal units, and also each of the biclique's focal assignments does not contain only one type of exposure so that we can do randomization test on it, it is likely to be very small because on average it contains only 2.45 focal assignments. If in the `Bimax` algorithm we set `minr = 12` and, say, `minc = 15`, it would take quite a long time to decompose the null exposure graph. What's worse is that it may never find such a biclique that contains `Zobs`!
+So if we want the final biclique decomposed from the null exposure graph that contains `Zobs` to have at least 12 focal units, and also each of the biclique's focal assignments does not contain only one type of exposure (so that we can do randomization test on the biclique), it is likely to be very small because on average it contains only 2.45 focal assignments as indicated above. If in the `Bimax` algorithm we set `minr = 12` and, say, `minc = 15`, it would take quite a long time to decompose the null exposure graph. What's worse is that it may never find such a biclique that contains `Zobs`!
 
 
