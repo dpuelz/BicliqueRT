@@ -900,10 +900,13 @@ out_bassefeller = function(N, K, Zobs, tau_main,
 
 #' Diagnostic for Randomized Experiment
 #'
-#' For different number of units selected, it returns the approximate number of focal
-#' assignments of the largest possible biclique of the null exposure graph that takes the
-#' selected units as focal units if we draw \code{N} randomizations. It can serve
-#' as a diagnostic for choosing \code{minr}, \code{minc} or \code{minass} in the
+#' For different number of units selected, it returns an \code{fmax} by 2 matrix,
+#' where \code{fmax} is the maximum number of units to be selected (see below).
+#' The first column is the approximate number of focal assignments of the largest possible biclique
+#' of the null exposure graph that takes the selected units as focal units if we draw
+#' \code{N} randomizations. The second column is the first column with an additional requirement
+#' that each of the biclique's focal assignments does not contain only one type of exposure.
+#' It can serve as a diagnostic for choosing \code{minr}, \code{minc} or \code{minass} in the
 #' function \code{clique_test}.
 #'
 #' @param struc Structure of the cluster. It should have two columns. The first column
@@ -911,45 +914,42 @@ out_bassefeller = function(N, K, Zobs, tau_main,
 #' @param p_group The probability of a group being selected as treated group.
 #' @param p_indi_t The probability of an individual in the treated group being treated.
 #' @param p_indi_nt The probability of an individual in the non-treated group being treated.
-#' @param test_check If \code{TRUE}, it returns the number of focal assignments of the largest biclique
-#' which for any of its focal assignments, does not contain only one type of exposure. This is necessary
-#' for the clique test to work properly. If \code{FALSE}, then it just returns the number of focal
-#' assignments of the largest biclique.
 #' @param N The number of randomizations performed.
-
-clique_diagnostic = function(struc, p_group, p_indi_t, p_indi_nt, test_check, N, fmax = 25, NR = 500, Nx = 500){
+#' @param fmax Maximum number of units to be selected to do the diagnosis. Default is 25.
+#' @return a \code{fmax} by 2 matrix.
+#' @export
+clique_diagnostic = function(struc, p_group, p_indi_t, p_indi_nt, N, fmax = 25, NR = 500, Nx = 500){
   K = length(unique(struc[,1]))
   p_a = (1 - p_indi_t); p_b = (1 - p_indi_nt)
   prob_group = tapply(struc[,2], factor(struc[,1]), length) / dim(struc)[1]
-  largest_vec = c()
+  largest_clique = matrix(nrow = fmax, ncol = 2)
 
   for (f in 1:fmax){
-    cat('\r','finding diagnostic graph for focal units number being ',f,'...')
-    prob_f = 0
+    cat('\r','doing diagnostic for focal units number being ',f,'...')
+    prob_f = 0; prob_f_val = 0
     x_rand = rmultinom(n = Nx, size = f, prob_group)
 
     for (idx in 1:Nx){
       x_rand_idx = x_rand[,idx]
       x_rand_idx_selected = which(x_rand_idx==1)
       R_idx = replicate(NR, rbinom(n = K, size = 1, 0.5), simplify = FALSE)
-      FR_idx = 0
+      FR_idx = 0; FR_idx_val = 0
       for (idr in 1:NR){
         FR_idr = (p_a^x_rand_idx - p_b^x_rand_idx) * R_idx[[idr]] + p_b^x_rand_idx
-        if (test_check){
-          R_selected = R_idx[[idr]][x_rand_idx_selected]
-          FR_idx = FR_idx + prod(FR_idr) * ((sum(R_selected)!=f) & (sum(R_selected)!=0))
-        } else {
-          FR_idx = FR_idx + prod(FR_idr)
-        }
+        R_selected = R_idx[[idr]][x_rand_idx_selected]
+
+        FR_idx = FR_idx + prod(FR_idr)
+        FR_idx_val = FR_idx_val + prod(FR_idr) * ((sum(R_selected)!=f) & (sum(R_selected)!=0))
       }
-      FR_idx = FR_idx / NR
-      prob_f = prob_f + FR_idx
+      FR_idx = FR_idx / NR; FR_idx_val = FR_idx_val / NR
+      prob_f = prob_f + FR_idx; prob_f_val = prob_f_val + FR_idx_val
     }
-    prob_f = prob_f / Nx
-    largest_vec[f] = prob_f * N
+    prob_f = prob_f / Nx; prob_f_val = prob_f_val / Nx
+    largest_clique[f, 1] = prob_f * N
+    largest_clique[f, 2] = prob_f_val * N
   }
 
-  return(largest_vec)
+  return(largest_clique)
 }
 
 

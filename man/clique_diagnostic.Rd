@@ -9,7 +9,6 @@ clique_diagnostic(
   p_group,
   p_indi_t,
   p_indi_nt,
-  test_check,
   N,
   fmax = 25,
   NR = 500,
@@ -26,17 +25,20 @@ represents group ID, and the second column is the individual ID. Please see the 
 
 \item{p_indi_nt}{The probability of an individual in the non-treated group being treated.}
 
-\item{test_check}{If \code{TRUE}, it returns the number of focal assignments of the largest biclique
-which for any of its focal assignments, does not contain only one type of exposure. This is necessary
-for the clique test to work properly. If \code{FALSE}, then it just returns the number of focal
-assignments of the largest biclique.}
-
 \item{N}{The number of randomizations performed.}
+
+\item{fmax}{Maximum number of units to be selected to do the diagnosis. Default is 25.}
+}
+\value{
+a \code{fmax} by 2 matrix.
 }
 \description{
-For different number of units selected, it returns the approximate number of focal
-assignments of the largest possible biclique of the null exposure graph that takes the
-selected units as focal units if we draw \code{N} randomizations. It can serve
-as a diagnostic for choosing \code{minr}, \code{minc} or \code{minass} in the
+For different number of units selected, it returns an \code{fmax} by 2 matrix,
+where \code{fmax} is the maximum number of units to be selected (see below).
+The first column is the approximate number of focal assignments of the largest possible biclique
+of the null exposure graph that takes the selected units as focal units if we draw
+\code{N} randomizations. The second column is the first column with an additional requirement
+that each of the biclique's focal assignments does not contain only one type of exposure.
+It can serve as a diagnostic for choosing \code{minr}, \code{minc} or \code{minass} in the
 function \code{clique_test}.
 }
