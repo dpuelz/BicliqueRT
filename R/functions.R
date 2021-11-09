@@ -889,7 +889,8 @@ out_bassefeller = function(N, K, Zobs, tau_main,
   }
 
   ## NULL TRUE
-  Yij10 = Yij00 + tau_main # enforcing null right here to test validity
+  #Yij10 = Yij00 + tau_main # enforcing null right here to test validity
+  ### modified: not enforcing here, but in the clique_test function.
 
   # Yi00 observations
   Yobs = rep(NA, N)
