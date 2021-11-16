@@ -851,7 +851,8 @@ out_Zprime = function(N,K,equal=T,numrand){
 #' @param N The number of observations (kids).
 #' @param K The number of houses.
 #' @param Zobs Observed treatment assignment vector.
-#' @param tau_main The main effect.
+#' @param tau_equal If \code{TRUE}, then regardless of structual parameters, we set Y_i(1) = Y_i(0) + \code{tau_main}.
+#' @param tau_main The main effect such that we force Y_i(1) = Y_i(0) + \code{tau_main}.
 #' @param sig_c Standard error on the causal effect. Here \eqn{\sigma_\mu=\sigma_\tau}=\code{sig_c}.
 #' @param sig_y Standard error on the outcome vector.
 #' @param taus Spillover effect.
@@ -861,9 +862,9 @@ out_Zprime = function(N,K,equal=T,numrand){
 #'
 #' @return An outcome vector of length \code{N}.
 #' @export
-out_bassefeller = function(N, K, Zobs, tau_main,
-                           sig_c=0.1,
-                           sig_y=0.5, taus = 0.7,taup = 1.5,mu00 = 2,equal=T){
+out_bassefeller = function(N, K, Zobs, tau_main, tau_equal = F,
+                           sig_c = 0.1, sig_y = 0.5, taus = 0.7, taup = 1.5, mu00 = 2,
+                           equal = T){
   sig_mu <- sig_taup <- sig_taus <- sig_c
   Yi00 = rnorm(K,mu00,sig_mu)
   tauip = rnorm(K,taup,sig_taup)
@@ -889,8 +890,9 @@ out_bassefeller = function(N, K, Zobs, tau_main,
   }
 
   ## NULL TRUE
-  #Yij10 = Yij00 + tau_main # enforcing null right here to test validity
-  ### modified: not enforcing here, but in the clique_test function.
+  if (tau_equal){
+    Yij10 = Yij00 + tau_main
+  }
 
   # Yi00 observations
   Yobs = rep(NA, N)
