@@ -122,7 +122,7 @@ CRT1 = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, tau=0.4, decom='bimax', minr=25, 
 CRT1$decision
 # [1] 0.9166667
 ```
-or if we change the simulated data such that there is actually on average no difference between the two groups:
+or if we change the simulated data such that there is actually no difference between the two groups:
 ```R
 simdat2 = out_bassefeller(N, K, Zprime_mat[, Zobs_id], tau_main = 0, tau_equal = TRUE)
 Yobs2 = simdat2$Yobs
