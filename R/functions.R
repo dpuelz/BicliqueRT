@@ -150,10 +150,18 @@ clique_test = function(Y, Z, Z_a, Z_b, Zobs_id, Xadj=NULL, alpha=0.05, tau=0,
     rtest_out = list(tobs=tobs, tvals=tvals)
     decision = out_pval(rtest_out, ret_pval, alpha)
 
+    if (sum(abs(tvals-tobs))/length(focal_assignments) < 1e-14){
+      cat("The test statistics are identical under each focal assignment. p-value is not available")
+      check_equal_statistics <- "The test statistics are identical under each focal assignment. p-value is not available"
+      decision = NA
+    } else {
+      check_equal_statistics <- c()
+    }
+
     # organize into return list
     retlist = list(decision=decision, ret_pval=ret_pval, tobs=tobs,
                    tvals=tvals, focal_units=focal_units, focal_assignments=focal_assignments,
-                   NEgraph=NEgraph, warnings=check_clique_unique)
+                   NEgraph=NEgraph, warnings=c(check_clique_unique, check_equal_statistics))
     retlist
   } else {
 

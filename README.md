@@ -102,8 +102,8 @@ Z = Zprime_mat==2    # we convert Z to be a binary matrix indicating whether ind
 Z_a = Zprime_mat==1  # controlled individuals in treated households, "spillover"
 Z_b = Zprime_mat==0  # individuals in untreated households, "controlled"
 
-# simulate an outcome vector assuming the null that Y_i(1) = Y_i(0) + 0.4 is true
-simdat = out_bassefeller(N, K, Zprime_mat[, Zobs_id], tau_main = 0.4, tau_equal = TRUE)
+# simulate an outcome vector assuming the null is true
+simdat = out_bassefeller(N, K, Zprime_mat[, Zobs_id], tau_main = 0.4)
 Yobs = simdat$Yobs
 ```
 This simulate the cluster structure data such that individuals in spillover groups (house i treated and self not treated) are on average 0.4 higher than individuals in pure controlled groups (house i not treated and self not treated).
@@ -122,9 +122,9 @@ CRT1 = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, tau=0.4, decom='bimax', minr=25, 
 CRT1$decision
 # [1] 0.9166667
 ```
-or if we change the simulated data such that there is actually no difference between the two groups:
+or if we change the simulated data such that there is actually on average no difference between the two groups:
 ```R
-simdat2 = out_bassefeller(N, K, Zprime_mat[, Zobs_id], tau_main = 0, tau_equal = TRUE)
+simdat2 = out_bassefeller(N, K, Zprime_mat[, Zobs_id], tau_main = 0)
 Yobs2 = simdat2$Yobs
 # run the test under the null that tau = 0
 CRT2 = clique_test(Yobs2, Z, Z_a, Z_b, Zobs_id, tau=0, decom='bimax', minr=25, minc=25)
