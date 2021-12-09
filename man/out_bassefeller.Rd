@@ -9,6 +9,7 @@ out_bassefeller(
   K,
   Zobs,
   tau_main,
+  tau_equal = F,
   sig_c = 0.1,
   sig_y = 0.5,
   taus = 0.7,
@@ -24,7 +25,9 @@ out_bassefeller(
 
 \item{Zobs}{Observed treatment assignment vector.}
 
-\item{tau_main}{The main effect.}
+\item{tau_main}{The main effect such that we force Y_i(1) = Y_i(0) + \code{tau_main}.}
+
+\item{tau_equal}{If \code{TRUE}, then regardless of structual parameters, we set Y_i(1) = Y_i(0) + \code{tau_main}.}
 
 \item{sig_c}{Standard error on the causal effect. Here \eqn{\sigma_\mu=\sigma_\tau}=\code{sig_c}.}
 
