@@ -204,13 +204,7 @@ for (i in 1:N){
 ```
 The `clique_test_ex` is the function we use to test such hypotheses. It works similarly to the `clique_test` function above, but instead of inputing `Z_a` and `Z_b`, we need to input a three-way array `expos` with dimensions being (number of units x number of randomizations x dimension of exposure). Its entry records the exposure `f_i(z)` of units under treatments, where the exposure has more than one dimensions.
 
-We firstly randomly assign outcomes to individuals:
-```R
-Y = rnorm(dim(Z)[1])
-test_out = clique_test_ex(Y, Z, exposure, 1, "bimax", minr=5, minc=5)
-# p-value is , not rejected.
-```
-A more interesting way is to design outcomes that obviously violate the null hypothesis. Specifically, we set
+We delibrately design outcomes that obviously violate the null hypothesis. Specifically, we set
 ```R
 Y = rep(0, N)
 for (i in 1:N){
@@ -220,7 +214,6 @@ for (i in 1:N){
 That is, an individual's outcome depends on how many individuals not connected to her are treated.
 ```R
 test_out = clique_test_ex(Y, Z, exposure, 1, "bimax", minr=5, minc=5)
-# p-value is , rejected at 0.1 level.
+# p-value is 0.081, rejected at 0.1 level.
 ```
-
 
