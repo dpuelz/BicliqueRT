@@ -192,7 +192,16 @@ The treatment assignment mechanism is an individual Bernoulli trial with treated
 num_randomizations = 1000
 Z = out_Z(pi=rep(0.2, dim(D)[1]), num_randomizations)
 ```
-We let `k=1` that assumes individuals' potential outcomes may depend only on treatments of units up to 1 hops away in the network, but no further.
+We set `k=1` that individuals' potential outcomes may depend only on treatments of units up to 1 hops away in the network, but no further.
+```R
+k = 1; Gk = (D <= k)
+exposure = array(0, c(N,num_randomizations,N)) # dim=(|N|, |Z|, dim(f_i(z)))
+Z = as.matrix(Z)
+for (i in 1:N){
+ # sweep(Z, 1, Gk[i,], FUN="*") is the exposure for i for all Z, each row is one dimension, that is, (f_i(z1), f_i(z2), f_i(z3),...)
+  exposure[i,,] = t(sweep(Z, 1, Gk[i,], FUN="*"))
+}
+```
 
 
 
