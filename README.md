@@ -174,4 +174,25 @@ lines(x = 2:25, y = clique_diag[-1,2], 'l', lty = 1, col = 'green') # number of 
 ```
 So if we want the final biclique decomposed from the null exposure graph that contains `Zobs` to have at least 12 focal units, and also each of the biclique's focal assignments does not contain only one type of exposure (so that we can do randomization test on the biclique), it is likely to be very small because on average it contains only 2.45 focal assignments as indicated above. If in the `Bimax` algorithm we set `minr = 12` and, say, `minc = 15`, it would take quite a long time to decompose the null exposure graph. What's worse is that it may never find such a biclique that contains `Zobs`!
 
+## Example: Extent of Interference
+We demonstrate how to test the "extent of interference" type null hypotheses as in example 3 in the paper. The test allows the individual exposure to be multi-dimensional, and test whether for all individuals, the potential outcome is the same under different treatment assignments that give the same exposure for an individual (eq. 4 in the paper). We illustrate using the example 3 in the paper.
+
+We firstly generate the network
+```R
+set.seed(1)
+N = 30
+D = matrix(sample(c(1:3, Inf), N^2, prob = c(.4, .3, .2, .1), replace = T), N, N)
+D[lower.tri(D)] = t(D)[lower.tri(D)]
+diag(D) = 0
+```
+`D` is a `N` by `N` symmetric matrix where each measures the distance between units `i` and `j` in the network. The distance takes five values 0,1,2,3,Inf where `D[i,i]=0`, and `D[i,j]=Inf` if `i` and `j` are not connected. Smaller the value, closer unit `i` and `j` are.
+
+The treatment assignment mechanism is an individual Bernoulli trial with treated probability being 0.2. 
+```R
+num_randomizations = 1000
+Z = out_Z(pi=rep(0.2, dim(D)[1]), num_randomizations)
+```
+We let `k=1` that assumes individuals' potential outcomes may depend only on treatments of units up to 1 hops away in the network, but no further.
+
+
 
