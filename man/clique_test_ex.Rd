@@ -16,7 +16,7 @@ Its entry records the exposure \code{f_i(z)} of units under treatments, where th
 
 \item{Zobs_id}{The index location of the observed assignment vector in \code{Z}.}
 
-\item{decom}{The algorithm used to calculate the biclique decomposition. Currently supported algorithms are "bimax" only.}
+\item{decom}{The algorithm used to calculate the biclique decomposition. Currently supported algorithms are "bimax" and "greedy".}
 
 \item{...}{Other stuff ...}
 }
