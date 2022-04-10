@@ -5,7 +5,7 @@
 #' @param expos A three-way array with dimensions (number of units x number of randomizations x dimension of exposure).
 #' Its entry records the exposure \code{f_i(z)} of units under treatments, where the exposure has more than one dimensions.
 #' @param Zobs_id The index location of the observed assignment vector in \code{Z}.
-#' @param decom The algorithm used to calculate the biclique decomposition. Currently supported algorithms are "bimax" only.
+#' @param decom The algorithm used to calculate the biclique decomposition. Currently supported algorithms are "bimax" and "greedy".
 #' @param ... Other stuff ...
 #'
 #' @return A list of items summarizing the randomization test.
@@ -76,13 +76,61 @@ clique_test_ex = function(Y, Z, expos, Zobs_id, decom, ...){
     }
   }
 
-  # greedy decomposition is still under development
-  # if (decom == 'greedy'){
-  #   decomp = out_clique_decomposition_greedy(NEgraph, Zobs_id, num_ass=addparam$minass, stop_at_Zobs)
-  #   if(stop_at_Zobs){
-  #     conditional_clique = decomp
-  #   } else {conditional_clique = out_clique(Zobs_id,decomp)}
-  # }
+  if (decom == 'greedy'){
+    while (length(Z0)>0){
+      cat("\r","Z0 now has length", length(Z0), '...')
+      # 1. select one random from 1:length(Z0) as Zsub
+      # 2. generate multiNEgraph = out_NEgraph_ex(Zsub, Z0, expos)
+      # 3. decompose multiNEgraph to multi_clique, get one biclique is enough
+      # 4. conditional_clique =union of multi_clique, delete multi_clique's col from Z0
+
+      failed_Zsub = c() # record Zsub that cannot give a greedy clique, to speed up the decomposition a bit
+      while (length(failed_Zsub) < length(Z0)){
+        Zsub = sample(setdiff(1:length(Z0), failed_Zsub), size = 1) # Zsub here is an index of vector Z0
+        multiNEgraph = out_NEgraph_ex(Zsub, Z0, expos)
+        num_ass = addparam$minass
+        break_signal = FALSE
+
+        iremove = which(rowSums(multiNEgraph!=0)==0)  # removes isolated units.
+        if(length(iremove)!=0){ multiNEgraph = multiNEgraph[-iremove,] }
+
+        if (dim(multiNEgraph)[2]<=num_ass){ # when remaining cols not enough to do the greedy algo.
+          units_leftover = which(rowSums(multiNEgraph^2)==dim(multiNEgraph^2)[2])
+          themat = multiNEgraph[units_leftover,]
+          break_signal = TRUE
+        } else {
+          test = out_greedy_decom(multiNEgraph, num_ass)
+          themat = test$clique
+        }
+        if (is.matrix(themat)) {
+          if (dim(themat)[1]>0){
+            focal_unit = as.integer(rownames(themat))
+            focal_ass = as.integer(colnames(themat)); focal_ass_match = Z0[focal_ass]
+            break # break the (length(failed_Zsub) < length(Z0)) loop
+          } else { # the decomposed clique is a 0xn matrix
+            failed_Zsub = c(failed_Zsub, Zsub)
+            next
+          }
+        } else { # the decomposed clique is not a matrix, skip to next loop
+          failed_Zsub = c(failed_Zsub, Zsub)
+          next
+        }
+      }
+
+      conditional_clique[focal_unit, focal_ass_match] = 1
+      conditional_clique_idx$focal_unit = union(conditional_clique_idx$focal_unit, focal_unit)
+      conditional_clique_idx$focal_ass = union(conditional_clique_idx$focal_ass, focal_ass_match)
+      Z0 = Z0[-focal_ass]
+
+      stop_at_Zobs = TRUE
+      if (stop_at_Zobs){
+        if (sum(focal_ass_match==Zobs_id)>0){
+          break
+        }
+      }
+      if (break_signal) {break}
+    }
+  }
 
   # test
   cat("\n finding test statistics ... \n")
@@ -117,9 +165,10 @@ out_NEgraph_ex = function(Zsub, Z0, expos, tol=1.5e-8){
   expos_sub_idx = Reduce("*", expos_sub_idx)
   NEgraph[expos_sub_idx == 1] = 1
 
+  NEgraph = as.matrix(NEgraph)
   rownames(NEgraph) = 1:num_unit
   colnames(NEgraph) = 1:length(Z0)
-  return(as.matrix(NEgraph))
+  return(NEgraph)
 }
 
 
