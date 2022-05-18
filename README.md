@@ -14,6 +14,43 @@ library(devtools)
 install_github("dpuelz/BicliqueRT")
 ```
 
+## Example: Spatial Interference under new framework
+```R
+set.seed(1)
+N = 500
+thenetwork = out_example_network(N)
+D = thenetwork$D
+
+# simulating an outcome vector
+Y = rnorm(N)
+
+# simulation parameters
+num_randomizations = 5000
+radius = 0.01
+
+# design function here is Bernoulli(0.2) for each unit
+design_fn = function() { rbinom(N, 1, prob=0.2) }
+Zrealized = as.matrix(out_Z(pi=rep(0.2, dim(D)[1]), 1))
+
+# exposure for each unit is (w_i, z_i) where
+# w_i = 1{\sum_{j\neq i} g_{ij}^r z_j > 0 } and g_{ij}^r = 1{d(i,j)<r}
+# which is c(as.numeric((Gr[i,] %*% z) > 0), z[i])
+Gr = (D<radius) * 1; diag(Gr) = 0
+
+exposure_i = function(z, i) {
+  c(as.numeric(sum(Gr[i,]*z) > 0), z[i])
+}
+null_hypothesis = list(c(0,0), c(1,0))
+null_equiv = function(exposure_z1, exposure_z2) {
+  (list(exposure_z1) %in% null_hypothesis) & (list(exposure_z2) %in% null_hypothesis)
+}
+
+
+test_out1_sep = clique_test(Y, Zrealized, design_fn, exposure_fn=1, exposure_i = exposure_i,
+                            null_equiv = null_equiv, decom="greedy", minass=25, 
+                            alpha=0.05, num_randomizations=num_randomizations) # exposure_fn is no longer used
+```
+
 ## Example: Spatial Interference
 The following simulation example illustrates spatial inference on a small synthetic network with 500 nodes:
 
