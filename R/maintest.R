@@ -1,4 +1,194 @@
-#' The main randomization test function for contrast hypothesis
+#' The generalized main randomization test function.
+#'
+#' @param Yrealized The observed outcome vector.
+#' @param Zrealized A vector of length being number of units that gives the realization of treatment assignment.
+#' @param design_fn A function whose return is a one time realization of the distribution of the treatment.
+#' @param exposure_fn A function that specifies the equality of exposure of a pair of individuals under different randomization.
+#' @param decom The algorithm used to calculate the biclique decomposition. Currently supported algorithms are "bimax" and "greedy".
+#' @param num_randomizations Number of randomizations to perform.
+#' @param ... Other stuff, such as parameters for clique decomposition algorithms (\code{minass} for
+#' greedy decomposition, \code{minr} and \code{minc} for bimax decomposition).
+#'
+#' @return A list of items summarizing the randomization test.
+clique_test = function(Yrealized, Zrealized, design_fn, exposure_fn, exposure_i, null_equiv, decom="greedy", alpha=0.05,
+                       Xadj=NULL, num_randomizations=2000, ...){
+
+  # design_fn replaces "Z". When generating realizations, set the ture realization be 1: Zobs_id=1
+  # num_rand is given currently, in the future perhaps automatically select.
+  # exposure_fn replaces "expos"
+  # we now give directly Zrealized: #unit x 1 vector, so no need Zobs_id
+
+  addparam = list(...) # catch variable parameters
+
+  # setting default values if they do not exist
+  if(is.null(addparam$exclude_treated)){ exclude_treated=TRUE } else { exclude_treated=addparam$exclude_treated }
+  if(is.null(addparam$stop_at_Zobs)){ stop_at_Zobs=FALSE } else { stop_at_Zobs= addparam$stop_at_Zobs}
+  if(is.null(addparam$ret_pval)){ ret_pval=TRUE } else { ret_pval=addparam$ret_pval }
+  if(is.null(addparam$adj_Y)){ adj_Y=FALSE } else { adj_Y=(addparam$adj_Y)&(!is.null(Xadj)) } # is TRUE iff we specify it and Xadj is not null
+
+  # generate randomizations using design_fn & num_randomizations --> Z
+  Z = matrix(0, nrow=length(Zrealized), ncol=(num_randomizations+1))
+  Z[, 1] = Zrealized
+  for (id_rand in 1:num_randomizations){
+    Z[, id_rand+1] = design_fn()
+  }
+  Zobs_id = 1
+  num_units = length(Yrealized)
+
+  # adjust for covariates, if any
+  # currently can only be adjusted by linear regression
+  if (adj_Y){
+    Yrealized = c(Yrealized - Xadj %*% solve(t(Xadj) %*% Xadj) %*% t(Xadj) %*% Yrealized)
+  }
+
+  # generate exposure for each unit under different treatment assignment
+  dim_exposure = length(exposure_i(Zrealized, 1)) # get how long the exposure is
+  if (dim_exposure > 1){
+    expos = array(0, c(num_units, num_randomizations+1, dim_exposure))
+  } else if (dim_exposure == 1){
+    expos = array(0, c(num_units, num_randomizations+1, 2)) # to make sure expos is always 3-D
+  } else {
+    cat("exposure_i should output a vector of length no less than 1!")
+  }
+  for (id_rand in 1:(num_randomizations+1)){
+    for (id_unit in 1:num_units){
+      expos[id_unit, id_rand, ] = exposure_i(Z[,id_rand], id_unit)
+    }
+  }
+
+  # decompose the null-exposure graph
+  cat("decompose the null-exposure graph ... \n")
+  Z0 = 1:dim(Z)[2]
+  conditional_clique_idx = list(focal_unit=c(), focal_ass=c())
+  conditional_clique = Matrix(0, nrow=dim(Z)[1], ncol=dim(Z)[2], sparse=TRUE)
+
+  # while length(Z0)>0, do:
+  # 1. select one random from 1:length(Z0) as Zsub
+  # 2. generate multiNEgraph = out_NEgraph_multi(Zsub, Z0, expos)
+  # 3. decompose multiNEgraph to multi_clique, get one biclique is enough
+  # 4. conditional_clique =union of multi_clique, delete multi_clique's col from Z0
+  if (decom == 'bimax'){
+    while (length(Z0)>0){
+      cat("\r","Z0 now has length", length(Z0), '...')
+
+      Zsub = sample(1:length(Z0), size = 1) # Zsub here is an index of vector Z0
+      # multiNEgraph = out_NEgraph_multi(Zsub, Z0, Z, num_units, exposure_fn)
+      multiNEgraph = out_NEgraph_multi_separate(Zsub, Z0, expos, null_equiv)
+
+      iremove = which(rowSums(multiNEgraph!=0)==0)  # removes isolated units.
+      if(length(iremove)!=0){ multiNEgraph = multiNEgraph[-iremove,] }
+
+      numleft = ncol(multiNEgraph)
+      minr.new = min(addparam$minr, numleft)
+      minc.new = min(addparam$minc, numleft)
+      bitest = biclust(multiNEgraph, method=BCBimax(), minr.new, minc.new, number=1)
+      bicliqMat = bicluster(multiNEgraph, bitest)
+      themat = bicliqMat$Bicluster1
+
+      # if current minr & minc gives no biclique decom, try a smaller one
+      while((length(themat)==0) & (numleft > 1)){
+        numleft = numleft - 1
+        minr.new = min(addparam$minr, numleft)
+        minc.new = min(addparam$minc, numleft)
+        bitest = biclust(multiNEgraph, method=BCBimax(), minr.new, minc.new, number=1)
+        bicliqMat = bicluster(multiNEgraph, bitest)
+        themat = bicliqMat$Bicluster1
+      }
+
+      if (is.matrix(themat)){
+        focal_unit = as.integer(rownames(themat))
+        focal_ass = as.integer(colnames(themat)); focal_ass_match = Z0[focal_ass]
+      } else { # the biclique we get is only one single column where Zsub lies (b/c this col is all 1)
+        next # perhaps just skip this loop and redraw a new Zsub
+      }
+      conditional_clique[focal_unit, focal_ass_match] = 1
+      conditional_clique_idx$focal_unit = union(conditional_clique_idx$focal_unit, focal_unit)
+      conditional_clique_idx$focal_ass = union(conditional_clique_idx$focal_ass, focal_ass_match)
+      Z0 = Z0[-focal_ass]
+
+      # stop at Zobs: can stop when one of the biclique we found contains Zobs
+      stop_at_Zobs = T
+      if (stop_at_Zobs){
+        if (sum(focal_ass_match==Zobs_id)>0){
+          break
+        }
+      }
+    }
+  }
+
+  if (decom == 'greedy'){
+    while (length(Z0)>0){
+      cat("\r","Z0 now has length", length(Z0), '...')
+
+      failed_Zsub = c() # record Zsub that cannot give a greedy clique, to speed up the decomposition a bit
+      while (length(failed_Zsub) < length(Z0)){
+        Zsub = sample(setdiff(1:length(Z0), failed_Zsub), size = 1) # Zsub here is an index of vector Z0
+        # multiNEgraph = out_NEgraph_multi(Zsub, Z0, Z, num_units, exposure_fn)
+        multiNEgraph = out_NEgraph_multi_separate(Zsub, Z0, expos, null_equiv)
+        num_ass = addparam$minass
+        break_signal = FALSE
+
+        ### should not remove isolated units here, otherwise rownames of multiNEgraph is distorted,
+        ### then get_clique function will go wrong when matching rownames.
+        # iremove = which(rowSums(multiNEgraph!=0)==0)  # removes isolated units.
+        # if(length(iremove)!=0){ multiNEgraph = multiNEgraph[-iremove,] }
+
+        if (dim(multiNEgraph)[2]<=num_ass){ # when remaining cols not enough to do the greedy algo.
+          units_leftover = which(rowSums(multiNEgraph^2)==dim(multiNEgraph^2)[2])
+          themat = multiNEgraph[units_leftover,]
+          break_signal = TRUE
+        } else {
+          test = out_greedy_decom(multiNEgraph, num_ass)
+          themat = test$clique
+        }
+        if (is.matrix(themat)) {
+          if (dim(themat)[1]>0){
+            focal_unit = as.integer(rownames(themat))
+            focal_ass = as.integer(colnames(themat)); focal_ass_match = Z0[focal_ass]
+            break # break the (length(failed_Zsub) < length(Z0)) loop
+          } else { # the decomposed clique is a 0xn matrix
+            failed_Zsub = c(failed_Zsub, Zsub)
+            next
+          }
+        } else { # the decomposed clique is not a matrix, skip to next loop
+          failed_Zsub = c(failed_Zsub, Zsub)
+          next
+        }
+      }
+
+      conditional_clique[focal_unit, focal_ass_match] = 1
+      conditional_clique_idx$focal_unit = union(conditional_clique_idx$focal_unit, focal_unit)
+      conditional_clique_idx$focal_ass = union(conditional_clique_idx$focal_ass, focal_ass_match)
+      Z0 = Z0[-focal_ass]
+
+      stop_at_Zobs = TRUE
+      if (stop_at_Zobs){
+        if (sum(focal_ass_match==Zobs_id)>0){
+          break
+        }
+      }
+      if (break_signal) {break}
+    }
+  }
+
+  # test
+  cat("\n finding test statistics ... \n")
+  conditional_clique = as.matrix(conditional_clique)
+  teststat = apply(conditional_clique, 2, function(z) {mean(Yrealized[as.logical(z)])})
+  tobs = teststat[Zobs_id]; tvals = teststat[setdiff(conditional_clique_idx$focal_ass, Zobs_id)]
+  pval = out_pval(list(tobs=tobs, tvals=tvals), T, alpha) # here we use the previous out_pval function
+
+  retlist = list(pval=pval, tobs=tobs, tvals=tvals, conditional_clique=conditional_clique)
+  return(retlist)
+
+}
+
+
+
+
+
+
+#' The main randomization test function for contrast hypothesis.
 #'
 #' @param Y The observed outcome vector.
 #' @param Z A binary matrix of dimension (number of units x number of randomizations, i.e. assignments.) storing the assignment vectors. Please see example.
@@ -18,10 +208,10 @@
 #' in the biclique that contains \code{Zobs}, exposures for each unit are the same, it will
 #' contain an error message, and the test decision will be \code{NA}.
 #' @export
-clique_test = function(Y, Z, Z_a, Z_b, Zobs_id, Xadj=NULL, alpha=0.05, tau=0,
-                       decom='bimax', ret_ci=FALSE, ci_dec=2, ci_method='grid', ...){
-# clique_test = function(Y, Z, Z_a, Z_b, Zobs_id, Xadj=NULL, alpha=0.05, tau=0,
-#                        decom='bimax', ret_ci=FALSE, ci_dec=2, ci_method='grid', ...){
+clique_test_contrast = function(Y, Z, Z_a, Z_b, Zobs_id, Xadj=NULL, alpha=0.05, tau=0,
+                                decom='bimax', ret_ci=FALSE, ci_dec=2, ci_method='grid', ...){
+  # clique_test = function(Y, Z, Z_a, Z_b, Zobs_id, Xadj=NULL, alpha=0.05, tau=0,
+  #                        decom='bimax', ret_ci=FALSE, ci_dec=2, ci_method='grid', ...){
   addparam = list(...) # catch variable parameters
 
   # setting default values if they do not exist
@@ -32,7 +222,7 @@ clique_test = function(Y, Z, Z_a, Z_b, Zobs_id, Xadj=NULL, alpha=0.05, tau=0,
 
   # make the null-exposure graph
   cat("construct the null-exposure graph ... \n")
-  NEgraph = out_NEgraph(Z_a,Z_b,Z,exclude_treated)
+  NEgraph = out_NEgraph_contrast(Z_a,Z_b,Z,exclude_treated)
 
   # decompose the null-exposure graph
   cat("decompose the null-exposure graph ... \n")
@@ -127,185 +317,5 @@ clique_test = function(Y, Z, Z_a, Z_b, Zobs_id, Xadj=NULL, alpha=0.05, tau=0,
   }
 
 }
-
-
-
-#' The main randomization test function for the full exclusion null hypothesis.
-#'
-#' @param Y The observed outcome vector.
-#' @param Zrealized A vector of length being number of units that gives the realization of treatment assignment.
-#' @param design_fn A function whose return is a one time realization of the distribution of the treatment.
-#' @param exposure_fn A function that specifies the exposure of each individual under different randomization.
-#' @param decom The algorithm used to calculate the biclique decomposition. Currently supported algorithms are "bimax" and "greedy".
-#' @param num_randomizations Number of randomizations to perform.
-#' @param ... Other stuff, such as parameters for clique decomposition algorithms (\code{minass} for
-#' greedy decomposition, \code{minr} and \code{minc} for bimax decomposition).
-#'
-#' @return A list of items summarizing the randomization test.
-clique_test_ex = function(Y, Zrealized, design_fn, exposure_fn, decom="greedy", alpha=0.05,
-                          num_randomizations=2000, ...){
-
-  # design_fn replaces "Z". When generating realizations, set the ture realization be 1: Zobs_id=1
-  # num_rand is given currently, in the future perhaps automatically select.
-  # exposure_fn replaces "expos"
-  # we now give directly Zrealized: #unit x 1 vector, so no need Zobs_id
-
-
-  addparam = list(...) # catch variable parameters
-
-  # setting default values if they do not exist
-  if(is.null(addparam$exclude_treated)){ exclude_treated=TRUE } else { exclude_treated=addparam$exclude_treated }
-  if(is.null(addparam$stop_at_Zobs)){ stop_at_Zobs=FALSE } else { stop_at_Zobs= addparam$stop_at_Zobs}
-  if(is.null(addparam$ret_pval)){ ret_pval=TRUE } else { ret_pval=addparam$ret_pval }
-  if(is.null(addparam$adj_Y)){ adj_Y=FALSE } else { adj_Y=(addparam$adj_Y)&(!is.null(Xadj)) } # is TRUE iff we specify it and Xadj is not null
-
-  # generate randomizations using design_fn & num_randomizations --> Z
-  Z = matrix(0, nrow=length(Zrealized), ncol=(num_randomizations+1))
-  Z[, 1] = Zrealized
-  for (id_rand in 1:num_randomizations){
-    Z[, id_rand+1] = design_fn()
-  }
-  Zobs_id = 1
-
-  # generate exposure using exposure_fn --> expos
-  num_units = length(Y)
-  dim_exposure = length(exposure_fn(Zrealized, 1)) # get how long the exposure is
-
-  if (dim_exposure > 1){
-    expos = array(0, c(num_units, num_randomizations+1, dim_exposure))
-  } else if (dim_exposure == 1){
-    expos = array(0, c(num_units, num_randomizations+1, 2)) # to make sure expos is always 3-D
-  } else {
-    cat("exposure_fn should output a vector of length no less than 1!")
-  }
-  for (id_rand in 1:(num_randomizations+1)){
-    for (id_unit in 1:num_units){
-      expos[id_unit, id_rand, ] = exposure_fn(Z[,id_rand], id_unit)
-    }
-  }
-
-  # decompose the null-exposure graph
-  cat("decompose the null-exposure graph ... \n")
-  Z0 = 1:dim(Z)[2]
-  conditional_clique_idx = list(focal_unit=c(), focal_ass=c())
-  conditional_clique = Matrix(0, nrow=dim(Z)[1], ncol=dim(Z)[2], sparse=TRUE)
-
-  # while length(Z0)>0, do:
-  # 1. select one random from 1:length(Z0) as Zsub
-  # 2. generate multiNEgraph = out_NEgraph_ex(Zsub, Z0, expos)
-  # 3. decompose multiNEgraph to multi_clique, get one biclique is enough
-  # 4. conditional_clique =union of multi_clique, delete multi_clique's col from Z0
-  if (decom == 'bimax'){
-    while (length(Z0)>0){
-      cat("\r","Z0 now has length", length(Z0), '...')
-
-      Zsub = sample(1:length(Z0), size = 1) # Zsub here is an index of vector Z0
-      multiNEgraph = out_NEgraph_ex(Zsub, Z0, expos)
-
-      iremove = which(rowSums(multiNEgraph!=0)==0)  # removes isolated units.
-      if(length(iremove)!=0){ multiNEgraph = multiNEgraph[-iremove,] }
-
-      numleft = ncol(multiNEgraph)
-      minr.new = min(addparam$minr, numleft)
-      minc.new = min(addparam$minc, numleft)
-      bitest = biclust(multiNEgraph, method=BCBimax(), minr.new, minc.new, number=1)
-      bicliqMat = bicluster(multiNEgraph, bitest)
-      themat = bicliqMat$Bicluster1
-
-      # if current minr & minc gives no biclique decom, try a smaller one
-      while((length(themat)==0) & (numleft > 1)){
-        numleft = numleft - 1
-        minr.new = min(addparam$minr, numleft)
-        minc.new = min(addparam$minc, numleft)
-        bitest = biclust(multiNEgraph, method=BCBimax(), minr.new, minc.new, number=1)
-        bicliqMat = bicluster(multiNEgraph, bitest)
-        themat = bicliqMat$Bicluster1
-      }
-
-      if (is.matrix(themat)){
-        focal_unit = as.integer(rownames(themat))
-        focal_ass = as.integer(colnames(themat)); focal_ass_match = Z0[focal_ass]
-      } else { # the biclique we get is only one single column where Zsub lies (b/c this col is all 1)
-        next # perhaps just skip this loop and redraw a new Zsub
-      }
-      conditional_clique[focal_unit, focal_ass_match] = 1
-      conditional_clique_idx$focal_unit = union(conditional_clique_idx$focal_unit, focal_unit)
-      conditional_clique_idx$focal_ass = union(conditional_clique_idx$focal_ass, focal_ass_match)
-      Z0 = Z0[-focal_ass]
-
-      # stop at Zobs: can stop when one of the biclique we found contains Zobs
-      stop_at_Zobs = T
-      if (stop_at_Zobs){
-        if (sum(focal_ass_match==Zobs_id)>0){
-          break
-        }
-      }
-    }
-  }
-
-  if (decom == 'greedy'){
-    while (length(Z0)>0){
-      cat("\r","Z0 now has length", length(Z0), '...')
-
-      failed_Zsub = c() # record Zsub that cannot give a greedy clique, to speed up the decomposition a bit
-      while (length(failed_Zsub) < length(Z0)){
-        Zsub = sample(setdiff(1:length(Z0), failed_Zsub), size = 1) # Zsub here is an index of vector Z0
-        multiNEgraph = out_NEgraph_ex(Zsub, Z0, expos)
-        num_ass = addparam$minass
-        break_signal = FALSE
-
-        iremove = which(rowSums(multiNEgraph!=0)==0)  # removes isolated units.
-        if(length(iremove)!=0){ multiNEgraph = multiNEgraph[-iremove,] }
-
-        if (dim(multiNEgraph)[2]<=num_ass){ # when remaining cols not enough to do the greedy algo.
-          units_leftover = which(rowSums(multiNEgraph^2)==dim(multiNEgraph^2)[2])
-          themat = multiNEgraph[units_leftover,]
-          break_signal = TRUE
-        } else {
-          test = out_greedy_decom(multiNEgraph, num_ass)
-          themat = test$clique
-        }
-        if (is.matrix(themat)) {
-          if (dim(themat)[1]>0){
-            focal_unit = as.integer(rownames(themat))
-            focal_ass = as.integer(colnames(themat)); focal_ass_match = Z0[focal_ass]
-            break # break the (length(failed_Zsub) < length(Z0)) loop
-          } else { # the decomposed clique is a 0xn matrix
-            failed_Zsub = c(failed_Zsub, Zsub)
-            next
-          }
-        } else { # the decomposed clique is not a matrix, skip to next loop
-          failed_Zsub = c(failed_Zsub, Zsub)
-          next
-        }
-      }
-
-      conditional_clique[focal_unit, focal_ass_match] = 1
-      conditional_clique_idx$focal_unit = union(conditional_clique_idx$focal_unit, focal_unit)
-      conditional_clique_idx$focal_ass = union(conditional_clique_idx$focal_ass, focal_ass_match)
-      Z0 = Z0[-focal_ass]
-
-      stop_at_Zobs = TRUE
-      if (stop_at_Zobs){
-        if (sum(focal_ass_match==Zobs_id)>0){
-          break
-        }
-      }
-      if (break_signal) {break}
-    }
-  }
-
-  # test
-  cat("\n finding test statistics ... \n")
-  conditional_clique = as.matrix(conditional_clique)
-  teststat = apply(conditional_clique, 2, function(z) {mean(Y[as.logical(z)])})
-  tobs = teststat[Zobs_id]; tvals = teststat[setdiff(conditional_clique_idx$focal_ass, Zobs_id)]
-  pval = out_pval(list(tobs=tobs, tvals=tvals), T, alpha) # here we use the previous out_pval function
-
-  retlist = list(pval=pval, tobs=tobs, tvals=tvals, conditional_clique=conditional_clique)
-  return(retlist)
-
-}
-
 
 

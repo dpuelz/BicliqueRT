@@ -3,29 +3,61 @@
 #' @param Zsub An integer from \code{1:length(Z0)} that represents a sample from \code{Z0}.
 #' @param Z0 A vector of column index that represents the remaining treatment.
 #' Please see Sec. 8 of the paper for more details.
+#' @param Z A matrix of dimension (\code{num_units} x \code{num_randomizations+1}) that records the randomizations
+#' of treatments for each unit.
+#' @param num_units Number of units in the experiment, equals to the length of the outcome vector.
+#' @param exposure_fn A function that specifies the equality of exposure
+#' of a pair of individuals under different randomization.
+#'
+#' @return A matrix of dimension (\code{num_units} x \code{length(Z0)}) which is the multi-null exposure graph with
+#' respect to \code{Z0[Zsub]} and \code{Z0}.
+out_NEgraph_multi = function(Zsub, Z0, Z, num_units, exposure_fn){
+  multiNEgraph = matrix(0, nrow = num_units, ncol = length(Z0))
+  Zsub_treatment = Z[,Z0[Zsub]]
+  for (i in 1:num_units){
+    for (zid in 1:length(Z0)){
+      z = Z[,Z0[zid]]
+      multiNEgraph[i, zid] = exposure_fn(Zsub_treatment, z, i)
+    }
+  }
+
+  multiNEgraph = multiNEgraph * 1
+  rownames(multiNEgraph) = 1:num_units
+  colnames(multiNEgraph) = 1:length(Z0)
+  return(multiNEgraph)
+}
+
+#' Generate multi-null exposure graph using null_equiv
+#'
+#' @param Zsub An integer from \code{1:length(Z0)} that represents a sample from \code{Z0}.
+#' @param Z0 A vector of column index that represents the remaining treatment.
+#' Please see Sec. 8 of the paper for more details.
 #' @param expos A three-way array with dimensions (number of units x number of randomizations x dimension of exposure).
 #' Its entry records the exposure \code{f_i(z)} of units under treatments, where the exposure has more than one dimensions.
+#' @param null_equiv A function that determines whether (i,z1) is equivalent to (i,z2) under null.
 #'
-#' @return A matrix of dimension (number of units x \code{length(Z0)}) which is the multi-null exposure graph with
-#' respect to \code{Z0[Zsub]} and \code{Zsub}.
-out_NEgraph_ex = function(Zsub, Z0, expos, tol=1.5e-8){
+#' @return A matrix of dimension (\code{num_units} x \code{length(Z0)}) which is the multi-null exposure graph
+#' with respect to \code{Z0[Zsub]} and \code{Z0}.
+out_NEgraph_multi_separate = function(Zsub, Z0, expos, null_equiv){
   expos_sub = expos[, Z0, ]
-  expos_sub_Zsub = expos_sub[,Zsub,]
-  num_unit = dim(expos_sub)[1]; num_rand = dim(expos_sub)[2]; dim_expos_sub = dim(expos_sub)[3]
+  num_units = dim(expos_sub)[1]; num_rand = dim(expos_sub)[2]; dim_expos_sub = dim(expos_sub)[3]
 
-  # subtract each column from the Zsub column
-  for (id in 1:num_rand){
-    expos_sub[,id,] = expos_sub[,id,] - expos_sub_Zsub
+  multiNEgraph = matrix(0, nrow = num_units, ncol = num_rand)
+  for (i in 1:num_units){
+    # compare equivalence of Zsub and each z in Z0
+    for (zid in 1:num_rand){
+      multiNEgraph[i, zid] = null_equiv(expos_sub[i, zid, ], expos_sub[i, Zsub, ])
+    }
   }
-  NEgraph = (rowSums(abs(expos_sub)<tol, dims=2) == dim_expos_sub) * 1
 
-  rownames(NEgraph) = 1:num_unit
-  colnames(NEgraph) = 1:length(Z0)
-  return(NEgraph)
+  multiNEgraph = multiNEgraph * 1
+  rownames(multiNEgraph) = 1:num_units
+  colnames(multiNEgraph) = 1:length(Z0)
+  return(multiNEgraph)
 }
 
 
-#' Generating Null Exposure Graph
+#' Generating the Null Exposure Graph for contrast hypothesis.
 #'
 #' One of the main functions for implementing the methodology.  Outputs the null-exposure graph based on binary matrices describing exposure conditions in the null hypothesis.  The null hypothesis is represented as:
 #' \eqn{H_0}: \eqn{Y_i}(\code{a}) \eqn{= Y_i}(\code{b}) for all \eqn{i},
@@ -38,7 +70,7 @@ out_NEgraph_ex = function(Zsub, Z0, expos, tol=1.5e-8){
 #'
 #' @return \code{NEgraph}, a matrix of dimension (number of units x number of randomizations, i.e. assignments.).  Row i, column j of the matrix either equals -1 (unit i is exposed to \code{a} under assignment j), 1 (unit i is exposed to \code{b} under assignment j), 0 (unit i is neither exposed to \code{a} nor \code{b} under assignment j).
 #' @export
-out_NEgraph = function(Z_a,Z_b,Z,exclude_treated=TRUE){
+out_NEgraph_contrast = function(Z_a,Z_b,Z,exclude_treated=TRUE){
   Z_a = sparsify(Z_a)
   Z_b = sparsify(Z_b)
   Z = sparsify(Z)
@@ -88,7 +120,7 @@ out_clique = function(Zobs_id,decomp){
 #' Specifically, the resulting decomposition paritions the assignment space,
 #' while the unit space may overlap.
 #'
-#' @param NEgraph The null-exposure graph object, see \code{out_NEgraph}.
+#' @param NEgraph The null-exposure graph.
 #' @param Zobs_id The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.
 #' @param minr The minimum number of focal units included in the cliques (algorithm runtime is sensitive to this value).
 #' @param minc The minimum number of focal assignment included in the cliques (algorithm runtime is sensitive to this value).
@@ -158,6 +190,8 @@ out_greedy_decom = function(NEgraph, num_ass){
   CONT = TRUE
   NEgraph_original = NEgraph
   get_clique_size = function(units) {
+    # the input units are actual row names of NEgraph_original
+    units
     ne_temp = matrix(NEgraph_original[units,], ncol=ncol(NEgraph_original))
     # sum(apply(ne_temp^2, 2, prod)) # the apply() gives 1 for assignments which all focals are connected to.
     sum(colSums(ne_temp) == length(units))

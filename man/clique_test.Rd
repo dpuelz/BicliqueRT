@@ -2,54 +2,41 @@
 % Please edit documentation in R/maintest.R
 \name{clique_test}
 \alias{clique_test}
-\title{The main randomization test function for contrast hypothesis}
+\title{The generalized main randomization test function.}
 \usage{
 clique_test(
-  Y,
-  Z,
-  Z_a,
-  Z_b,
-  Zobs_id,
-  Xadj = NULL,
+  Yrealized,
+  Zrealized,
+  design_fn,
+  exposure_fn,
+  exposure_i,
+  null_equiv,
+  decom = "greedy",
   alpha = 0.05,
-  tau = 0,
-  decom = "bimax",
-  ret_ci = FALSE,
-  ci_dec = 2,
-  ci_method = "grid",
+  Xadj = NULL,
+  num_randomizations = 2000,
   ...
 )
 }
 \arguments{
-\item{Y}{The observed outcome vector.}
+\item{Yrealized}{The observed outcome vector.}
 
-\item{Z}{A binary matrix of dimension (number of units x number of randomizations, i.e. assignments.) storing the assignment vectors. Please see example.}
+\item{Zrealized}{A vector of length being number of units that gives the realization of treatment assignment.}
 
-\item{Z_a}{A binary matrix with dimension (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{a} under assignment j. Please see example.}
+\item{design_fn}{A function whose return is a one time realization of the distribution of the treatment.}
 
-\item{Z_b}{A binary matrix with (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{b} under assignment j. Please see example.}
+\item{exposure_fn}{A function that specifies the equality of exposure of a pair of individuals under different randomization.}
 
-\item{Zobs_id}{The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.}
+\item{decom}{The algorithm used to calculate the biclique decomposition. Currently supported algorithms are "bimax" and "greedy".}
 
-\item{Xadj}{The covariates that might affect Y. If not \code{NULL}, will replace \code{Y} by the residuals from the linear regression of \code{Y} on \code{Xadj}. Note that users would need to add an intercept to \code{Xadj} manually if they want.
-To adjust \code{Xadj}, pass in \code{Y_adj=TRUE} and a non-empty \code{NULL} that has the same row numbers as \code{Y}.}
+\item{num_randomizations}{Number of randomizations to perform.}
 
-\item{alpha}{The significance level. By default it's \eqn{0.05}.}
-
-\item{tau}{The \eqn{\tau} in the null \eqn{Y_i(b) = Y_i(a) + \tau} for all \eqn{i}. By default is \eqn{0}.}
-
-\item{decom}{The algorithm used to calculate the biclique decomposition. Currently supported algorithms
-are "bimax" and "greedy".}
-
-\item{ret_ci}{Whether calculates the \eqn{1-\alpha} confidence interval or not. Default is \code{FALSE}.}
-
-\item{...}{Other stuff ...}
+\item{...}{Other stuff, such as parameters for clique decomposition algorithms (\code{minass} for
+greedy decomposition, \code{minr} and \code{minc} for bimax decomposition).}
 }
 \value{
-A list of items summarizing the randomization test. If for some focal assignments
-in the biclique that contains \code{Zobs}, exposures for each unit are the same, it will
-contain an error message, and the test decision will be \code{NA}.
+A list of items summarizing the randomization test.
 }
 \description{
-The main randomization test function for contrast hypothesis
+The generalized main randomization test function.
 }

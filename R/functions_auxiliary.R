@@ -190,18 +190,22 @@ out_Zprime = function(N,K,equal=T,numrand){
 #' @param N The number of observations (kids).
 #' @param K The number of houses.
 #' @param Zobs Observed treatment assignment vector.
-#' @param tau_equal If \code{TRUE}, then regardless of structual parameters, we set Y_i(1) = Y_i(0) + \code{tau_main}.
 #' @param tau_main The main effect such that we force Y_i(1) = Y_i(0) + \code{tau_main}.
+#' @param housestruct The household structure. A vector whose length is the number of household, and
+#' where each entry specifies number of units in a household. If not specified, will generate from \code{N}, \code{K}.
+#' @param tau_equal If \code{TRUE}, then regardless of structual parameters, we set Y_i(1) = Y_i(0) + \code{tau_main}.
 #' @param sig_c Standard error on the causal effect. Here \eqn{\sigma_\mu=\sigma_\tau}=\code{sig_c}.
 #' @param sig_y Standard error on the outcome vector.
 #' @param taus Spillover effect.
 #' @param taup Primary effect.
 #' @param mu00 The effect on pure control units.
-#' @param equal A binary parameter that determines the exact house structure. If \code{equal=TRUE}, every household has equal number of kids. If \code{equal=FALSE}, every household samples the number of kids at random.
+#' @param equal A binary parameter that determines the house structure when it's not specified.
+#' If \code{equal=TRUE}, every household has equal number of kids.
+#' If \code{equal=FALSE}, every household samples the number of kids at random.
 #'
 #' @return An outcome vector of length \code{N}.
 #' @export
-out_bassefeller = function(N, K, Zobs, tau_main, tau_equal = F,
+out_bassefeller = function(N, K, Zobs, tau_main, housestruct=NULL, tau_equal = F,
                            sig_c = 0.1, sig_y = 0.5, taus = 0.7, taup = 1.5, mu00 = 2,
                            equal = T){
   sig_mu <- sig_taup <- sig_taus <- sig_c
@@ -216,7 +220,7 @@ out_bassefeller = function(N, K, Zobs, tau_main, tau_equal = F,
   Yi11 =  Yi00 + tauip; Yi10 =  Yi00 + tauis
 
   # get the experimental structure (OBSERVED)
-  housestruct = out_house_structure(N,K,equal)
+  if (is.null(housestruct)) {housestruct = out_house_structure(N,K,equal)}
 
   # potential outcome vectors
   Yij00 = c()

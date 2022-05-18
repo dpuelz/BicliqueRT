@@ -13,7 +13,7 @@ out_clique_decomposition_bimax(
 )
 }
 \arguments{
-\item{NEgraph}{The null-exposure graph object, see \code{out_NEgraph}.}
+\item{NEgraph}{The null-exposure graph.}
 
 \item{Zobs_id}{The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.}
 
