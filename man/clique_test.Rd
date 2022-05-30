@@ -21,13 +21,33 @@ clique_test(
 \arguments{
 \item{Yrealized}{The observed outcome vector.}
 
-\item{Zrealized}{A vector of length being number of units that gives the realization of treatment assignment.}
+\item{Zrealized}{A vector that gives the realization of treatment assignment. Its length should match \code{Yrealized}
+and is the number of units in the experiment.}
 
-\item{design_fn}{A function whose return is a one time realization of the distribution of the treatment.}
+\item{design_fn}{A function that returns a realization of treatment for the whole sample. For example,
+if each unit has equal probability \eqn{0.2} to receive the treatment independently, we can write
+\code{design_fn = function() { rbinom(num_units, 1, prob=0.2) }}.}
 
-\item{exposure_fn}{A function that specifies the equality of exposure of a pair of individuals under different randomization.}
+\item{exposure_i}{A function that returns exposure \eqn{f_i(z)} of unit \eqn{i} under treatment \eqn{z} where
+\eqn{z} is the treatment for the whole sample. The inputs of the function are an index \code{i} and
+a vector \code{z}. For example, if the exposure of \eqn{i} under \eqn{z} is the treatment it receives, then
+we can write \code{exposure_i = function(z, i) { z[i] }}. See more examples in the README file.}
 
-\item{decom}{The algorithm used to calculate the biclique decomposition. Currently supported algorithms are "bimax" and "greedy".}
+\item{null_equiv}{A function that takes two inputs from \code{exposure_i} and determines
+whether \eqn{f_i(z_1)} is equivalent to \eqn{f_i(z_2)} under the null hypothesis. For example, if the
+null is "extent of interference" type of null, we can write
+\code{null_equiv = function(exposure_z1, exposure_z2) {identical(exposure_z1, exposure_z2)}}.}
+
+\item{decom}{The algorithm used to do the biclique decomposition. Currently supported algorithms are \code{"bimax"}
+and \code{"greedy"}. If \code{"bimax"} is used, we should give \code{minr=} and \code{minc=} that specify the
+minimum number of units and assignments in the bicliques found by the algorithm. If \code{"greedy"} is used, we should
+give \code{minass=}.}
+
+\item{alpha}{The significance level. By default it's \eqn{0.05}.}
+
+\item{Xadj}{The covariates that might affect Y. If not \code{NULL}, will replace \code{Y} by the residuals
+from the linear regression of \code{Y} on \code{Xadj}. Note that users would need to add an intercept to \code{Xadj} manually if they want.
+To adjust \code{Xadj}, pass in \code{adj_Y=TRUE} and a non-empty \code{NULL} that has the same number of rows as \code{Y}.}
 
 \item{num_randomizations}{Number of randomizations to perform.}
 

@@ -2,9 +2,9 @@
 % Please edit documentation in R/functions_graph.R
 \name{out_NEgraph_multi_separate}
 \alias{out_NEgraph_multi_separate}
-\title{Generate multi-null exposure graph using null_equiv}
+\title{Generate multi-null exposure graph using null_equiv.}
 \usage{
-out_NEgraph_multi_separate(Zsub, Z0, expos, null_equiv)
+out_NEgraph_multi_separate(Zsub, Z0, expos, null_equiv, dim_exposure)
 }
 \arguments{
 \item{Zsub}{An integer from \code{1:length(Z0)} that represents a sample from \code{Z0}.}
@@ -15,12 +15,15 @@ Please see Sec. 8 of the paper for more details.}
 \item{expos}{A three-way array with dimensions (number of units x number of randomizations x dimension of exposure).
 Its entry records the exposure \code{f_i(z)} of units under treatments, where the exposure has more than one dimensions.}
 
-\item{null_equiv}{A function that determines whether (i,z1) is equivalent to (i,z2) under null.}
+\item{null_equiv}{A function that takes two inputs from \code{exposure_i} and determines
+whether \eqn{f_i(z_1)} is equivalent to \eqn{f_i(z_2)} under the null hypothesis. For example, if the
+null is "extent of interference" type of null, we can write
+\code{null_equiv = function(exposure_z1, exposure_z2) {identical(exposure_z1, exposure_z2)}}.}
 }
 \value{
 A matrix of dimension (\code{num_units} x \code{length(Z0)}) which is the multi-null exposure graph
 with respect to \code{Z0[Zsub]} and \code{Z0}.
 }
 \description{
-Generate multi-null exposure graph using null_equiv
+Generate multi-null exposure graph using null_equiv.
 }

@@ -1,22 +1,34 @@
 #' The generalized main randomization test function.
 #'
 #' @param Yrealized The observed outcome vector.
-#' @param Zrealized A vector of length being number of units that gives the realization of treatment assignment.
-#' @param design_fn A function whose return is a one time realization of the distribution of the treatment.
-#' @param exposure_fn A function that specifies the equality of exposure of a pair of individuals under different randomization.
-#' @param decom The algorithm used to calculate the biclique decomposition. Currently supported algorithms are "bimax" and "greedy".
+#' @param Zrealized A vector that gives the realization of treatment assignment. Its length should match \code{Yrealized}
+#' and is the number of units in the experiment.
+#' @param design_fn A function that returns a realization of treatment for the whole sample. For example,
+#' if each unit has equal probability \eqn{0.2} to receive the treatment independently, we can write
+#' \code{design_fn = function() { rbinom(num_units, 1, prob=0.2) }}.
+#' @param exposure_i A function that returns exposure \eqn{f_i(z)} of unit \eqn{i} under treatment \eqn{z} where
+#' \eqn{z} is the treatment for the whole sample. The inputs of the function are an index \code{i} and
+#' a vector \code{z}. For example, if the exposure of \eqn{i} under \eqn{z} is the treatment it receives, then
+#' we can write \code{exposure_i = function(z, i) { z[i] }}. See more examples in the README file.
+#' @param null_equiv A function that takes two inputs from \code{exposure_i} and determines
+#' whether \eqn{f_i(z_1)} is equivalent to \eqn{f_i(z_2)} under the null hypothesis. For example, if the
+#' null is "extent of interference" type of null, we can write
+#' \code{null_equiv = function(exposure_z1, exposure_z2) {identical(exposure_z1, exposure_z2)}}.
+#' @param decom The algorithm used to do the biclique decomposition. Currently supported algorithms are \code{"bimax"}
+#' and \code{"greedy"}. If \code{"bimax"} is used, we should give \code{minr=} and \code{minc=} that specify the
+#' minimum number of units and assignments in the bicliques found by the algorithm. If \code{"greedy"} is used, we should
+#' give \code{minass=}.
+#' @param alpha The significance level. By default it's \eqn{0.05}.
 #' @param num_randomizations Number of randomizations to perform.
+#' @param Xadj The covariates that might affect Y. If not \code{NULL}, will replace \code{Y} by the residuals
+#' from the linear regression of \code{Y} on \code{Xadj}. Note that users would need to add an intercept to \code{Xadj} manually if they want.
+#' To adjust \code{Xadj}, pass in \code{adj_Y=TRUE} and a non-empty \code{NULL} that has the same number of rows as \code{Y}.
 #' @param ... Other stuff, such as parameters for clique decomposition algorithms (\code{minass} for
 #' greedy decomposition, \code{minr} and \code{minc} for bimax decomposition).
 #'
 #' @return A list of items summarizing the randomization test.
 clique_test = function(Yrealized, Zrealized, design_fn, exposure_fn, exposure_i, null_equiv, decom="greedy", alpha=0.05,
                        Xadj=NULL, num_randomizations=2000, ...){
-
-  # design_fn replaces "Z". When generating realizations, set the ture realization be 1: Zobs_id=1
-  # num_rand is given currently, in the future perhaps automatically select.
-  # exposure_fn replaces "expos"
-  # we now give directly Zrealized: #unit x 1 vector, so no need Zobs_id
 
   addparam = list(...) # catch variable parameters
 
@@ -35,8 +47,7 @@ clique_test = function(Yrealized, Zrealized, design_fn, exposure_fn, exposure_i,
   Zobs_id = 1
   num_units = length(Yrealized)
 
-  # adjust for covariates, if any
-  # currently can only be adjusted by linear regression
+  # adjust for covariates, if any. Currently can only be adjusted by linear regression
   if (adj_Y){
     Yrealized = c(Yrealized - Xadj %*% solve(t(Xadj) %*% Xadj) %*% t(Xadj) %*% Yrealized)
   }
@@ -73,7 +84,7 @@ clique_test = function(Yrealized, Zrealized, design_fn, exposure_fn, exposure_i,
 
       Zsub = sample(1:length(Z0), size = 1) # Zsub here is an index of vector Z0
       # multiNEgraph = out_NEgraph_multi(Zsub, Z0, Z, num_units, exposure_fn)
-      multiNEgraph = out_NEgraph_multi_separate(Zsub, Z0, expos, null_equiv)
+      multiNEgraph = out_NEgraph_multi_separate(Zsub, Z0, expos, null_equiv, dim_exposure)
 
       iremove = which(rowSums(multiNEgraph!=0)==0)  # removes isolated units.
       if(length(iremove)!=0){ multiNEgraph = multiNEgraph[-iremove,] }
@@ -124,7 +135,7 @@ clique_test = function(Yrealized, Zrealized, design_fn, exposure_fn, exposure_i,
       while (length(failed_Zsub) < length(Z0)){
         Zsub = sample(setdiff(1:length(Z0), failed_Zsub), size = 1) # Zsub here is an index of vector Z0
         # multiNEgraph = out_NEgraph_multi(Zsub, Z0, Z, num_units, exposure_fn)
-        multiNEgraph = out_NEgraph_multi_separate(Zsub, Z0, expos, null_equiv)
+        multiNEgraph = out_NEgraph_multi_separate(Zsub, Z0, expos, null_equiv, dim_exposure)
         num_ass = addparam$minass
         break_signal = FALSE
 
@@ -196,7 +207,7 @@ clique_test = function(Yrealized, Zrealized, design_fn, exposure_fn, exposure_i,
 #' @param Z_b A binary matrix with (number of units x number of randomizations, i.e. assignments.)  Row i, column j of the matrix corresponds to whether a unit i is exposed to \code{b} under assignment j. Please see example.
 #' @param Zobs_id The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.
 #' @param Xadj The covariates that might affect Y. If not \code{NULL}, will replace \code{Y} by the residuals from the linear regression of \code{Y} on \code{Xadj}. Note that users would need to add an intercept to \code{Xadj} manually if they want.
-#' To adjust \code{Xadj}, pass in \code{Y_adj=TRUE} and a non-empty \code{NULL} that has the same row numbers as \code{Y}.
+#' To adjust \code{Xadj}, pass in \code{adj_Y=TRUE} and a non-empty \code{NULL} that has the same row numbers as \code{Y}.
 #' @param alpha The significance level. By default it's \eqn{0.05}.
 #' @param tau The \eqn{\tau} in the null \eqn{Y_i(b) = Y_i(a) + \tau} for all \eqn{i}. By default is \eqn{0}.
 #' @param decom The algorithm used to calculate the biclique decomposition. Currently supported algorithms

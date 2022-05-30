@@ -27,26 +27,35 @@ out_NEgraph_multi = function(Zsub, Z0, Z, num_units, exposure_fn){
   return(multiNEgraph)
 }
 
-#' Generate multi-null exposure graph using null_equiv
+#' Generate multi-null exposure graph using null_equiv.
 #'
+#' @inheritParams clique_test
 #' @param Zsub An integer from \code{1:length(Z0)} that represents a sample from \code{Z0}.
 #' @param Z0 A vector of column index that represents the remaining treatment.
 #' Please see Sec. 8 of the paper for more details.
 #' @param expos A three-way array with dimensions (number of units x number of randomizations x dimension of exposure).
 #' Its entry records the exposure \code{f_i(z)} of units under treatments, where the exposure has more than one dimensions.
-#' @param null_equiv A function that determines whether (i,z1) is equivalent to (i,z2) under null.
 #'
 #' @return A matrix of dimension (\code{num_units} x \code{length(Z0)}) which is the multi-null exposure graph
 #' with respect to \code{Z0[Zsub]} and \code{Z0}.
-out_NEgraph_multi_separate = function(Zsub, Z0, expos, null_equiv){
+out_NEgraph_multi_separate = function(Zsub, Z0, expos, null_equiv, dim_exposure){
   expos_sub = expos[, Z0, ]
   num_units = dim(expos_sub)[1]; num_rand = dim(expos_sub)[2]; dim_expos_sub = dim(expos_sub)[3]
 
   multiNEgraph = matrix(0, nrow = num_units, ncol = num_rand)
-  for (i in 1:num_units){
-    # compare equivalence of Zsub and each z in Z0
-    for (zid in 1:num_rand){
-      multiNEgraph[i, zid] = null_equiv(expos_sub[i, zid, ], expos_sub[i, Zsub, ])
+  if (dim_exposure == 1){
+    for (i in 1:num_units){
+      # compare equivalence of Zsub and each z in Z0
+      for (zid in 1:num_rand){
+        multiNEgraph[i, zid] = null_equiv(expos_sub[i, zid, 1], expos_sub[i, Zsub, 1])
+      }
+    }
+  } else {
+    for (i in 1:num_units){
+      # compare equivalence of Zsub and each z in Z0
+      for (zid in 1:num_rand){
+        multiNEgraph[i, zid] = null_equiv(expos_sub[i, zid, ], expos_sub[i, Zsub, ])
+      }
     }
   }
 

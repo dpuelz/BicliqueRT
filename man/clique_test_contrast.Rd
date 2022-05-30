@@ -32,7 +32,7 @@ clique_test_contrast(
 \item{Zobs_id}{The index location of the observed assignment vector in \code{Z}, \code{Z_a}, and \code{Z_b}.}
 
 \item{Xadj}{The covariates that might affect Y. If not \code{NULL}, will replace \code{Y} by the residuals from the linear regression of \code{Y} on \code{Xadj}. Note that users would need to add an intercept to \code{Xadj} manually if they want.
-To adjust \code{Xadj}, pass in \code{Y_adj=TRUE} and a non-empty \code{NULL} that has the same row numbers as \code{Y}.}
+To adjust \code{Xadj}, pass in \code{adj_Y=TRUE} and a non-empty \code{NULL} that has the same row numbers as \code{Y}.}
 
 \item{alpha}{The significance level. By default it's \eqn{0.05}.}
 
