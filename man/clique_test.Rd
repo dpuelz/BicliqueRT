@@ -8,10 +8,10 @@ clique_test(
   Yrealized,
   Zrealized,
   design_fn,
-  exposure_fn,
   exposure_i,
   null_equiv,
-  decom = "greedy",
+  decomposition.control = list(method = "greedy", minass = 10),
+  teststat,
   alpha = 0.05,
   Xadj = NULL,
   num_randomizations = 2000,
@@ -38,21 +38,27 @@ whether \eqn{f_i(z_1)} is equivalent to \eqn{f_i(z_2)} under the null hypothesis
 null is "extent of interference" type of null, we can write
 \code{null_equiv = function(exposure_z1, exposure_z2) {identical(exposure_z1, exposure_z2)}}.}
 
-\item{decom}{The algorithm used to do the biclique decomposition. Currently supported algorithms are \code{"bimax"}
-and \code{"greedy"}. If \code{"bimax"} is used, we should give \code{minr=} and \code{minc=} that specify the
-minimum number of units and assignments in the bicliques found by the algorithm. If \code{"greedy"} is used, we should
-give \code{minass=}.}
+\item{decomposition.control}{A list that contains settings for biclique decomposition. It should contains
+a \code{method} which is either \code{"bimax"} or \code{"greedy"}. If \code{"bimax"} is used,
+\code{minr} and \code{minc} should be supplied that specify the minimum number of units and assignments
+in the bicliques found by the algorithm. If \code{"greedy"} is used, \code{minass} should be supplied.
+By default, it is set to be \code{list(method="greedy", minass=10)}. That is, by default it uses
+greedy decomposition algorithm with \code{minass=10}.}
 
-\item{alpha}{The significance level. By default it's \eqn{0.05}.}
+\item{teststat}{The test statistic used. It should contain at least (with order)
+\code{Y, Z, focal_units} as inputs where \code{Y} is the outcome vector, \code{Z} is the treatment vector
+and \code{focal_units} is a 0-1 vector indicating whether a unit is focal (=1) or not (=0). All three inputs
+should have length equal to number of units and have the same ordering.}
+
+\item{alpha}{The significance level. By default it's \code{0.05}.}
 
 \item{Xadj}{The covariates that might affect Y. If not \code{NULL}, will replace \code{Y} by the residuals
 from the linear regression of \code{Y} on \code{Xadj}. Note that users would need to add an intercept to \code{Xadj} manually if they want.
 To adjust \code{Xadj}, pass in \code{adj_Y=TRUE} and a non-empty \code{NULL} that has the same number of rows as \code{Y}.}
 
-\item{num_randomizations}{Number of randomizations to perform.}
+\item{num_randomizations}{Number of randomizations to perform. By default it's \code{2000}.}
 
-\item{...}{Other stuff, such as parameters for clique decomposition algorithms (\code{minass} for
-greedy decomposition, \code{minr} and \code{minc} for bimax decomposition).}
+\item{...}{Other stuff.}
 }
 \value{
 A list of items summarizing the randomization test.
