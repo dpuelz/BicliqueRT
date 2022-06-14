@@ -3,79 +3,99 @@
 #' @param Yrealized The observed outcome vector.
 #' @param Zrealized A vector that gives the realization of treatment assignment. Its length should match \code{Yrealized}
 #' and is the number of units in the experiment.
-#' @param design_fn A function that returns a realization of treatment for the whole sample. For example,
-#' if each unit has equal probability \eqn{0.2} to receive the treatment independently, we can write
-#' \code{design_fn = function() { rbinom(num_units, 1, prob=0.2) }}.
-#' @param exposure_i A function that returns exposure \eqn{f_i(z)} of unit \eqn{i} under treatment \eqn{z} where
-#' \eqn{z} is the treatment for the whole sample. The inputs of the function are an index \code{i} and
-#' a vector \code{z}. For example, if the exposure of \eqn{i} under \eqn{z} is the treatment it receives, then
-#' we can write \code{exposure_i = function(z, i) { z[i] }}. See more examples in the README file.
-#' @param null_equiv A function that takes two inputs from \code{exposure_i} and determines
-#' whether \eqn{f_i(z_1)} is equivalent to \eqn{f_i(z_2)} under the null hypothesis. For example, if the
-#' null is "extent of interference" type of null, we can write
-#' \code{null_equiv = function(exposure_z1, exposure_z2) {identical(exposure_z1, exposure_z2)}}.
-#' @param decomposition.control A list that contains settings for biclique decomposition. It should contains
-#' a \code{method} which is either \code{"bimax"} or \code{"greedy"}. If \code{"bimax"} is used,
-#' \code{minr} and \code{minc} should be supplied that specify the minimum number of units and assignments
-#' in the bicliques found by the algorithm. If \code{"greedy"} is used, \code{minass} should be supplied.
-#' By default, it is set to be \code{list(method="greedy", minass=10)}. That is, by default it uses
-#' greedy decomposition algorithm with \code{minass=10}.
+#' @param hypothesis A list that contains three functions specifyting the experiment design and null hypothesis.
+#' See details for further illustration.
+#' @param controls A list that contains settings for biclique decomposition and covariates adjustment.
+#' By default it is \code{list(method="greedy", minass=10, num_randomizations=2000)}.
+#' That is, by default it uses greedy decomposition algorithm with \code{minass=10}, and the number of
+#' randomizations to perform is 2000. See details for further illustration.
 #' @param teststat The test statistic used. It should contain at least (with order)
 #' \code{Y, Z, focal_units} as inputs where \code{Y} is the outcome vector, \code{Z} is the treatment vector
 #' and \code{focal_units} is a 0-1 vector indicating whether a unit is focal (=1) or not (=0). All three inputs
 #' should have length equal to number of units and have the same ordering.
 #' @param alpha The significance level. By default it's \code{0.05}.
-#' @param num_randomizations Number of randomizations to perform. By default it's \code{2000}.
-#' @param Xadj The covariates that might affect Y. If not \code{NULL}, will replace \code{Y} by the residuals
-#' from the linear regression of \code{Y} on \code{Xadj}. Note that users would need to add an intercept to \code{Xadj} manually if they want.
-#' To adjust \code{Xadj}, pass in \code{adj_Y=TRUE} and a non-empty \code{NULL} that has the same number of rows as \code{Y}.
-#' @param ... Other stuff.
 #'
-#' @return A list of items summarizing the randomization test.
-clique_test = function(Yrealized, Zrealized, design_fn, exposure_i, null_equiv,
-                       decomposition.control=list(method="greedy", minass=10),
-                       teststat, alpha=0.05, Xadj=NULL, num_randomizations=2000, ...){
+#' @details \code{hypothesis} contains three functions:
+#' \itemize{
+#'  \item{\code{design_fn}} {A function that returns a realization of treatment for the whole sample. For example,
+#' if each unit has equal probability \eqn{0.2} to receive the treatment independently, we can write
+#' \code{design_fn = function() { rbinom(num_units, 1, prob=0.2) }}.}
+#'  \item{\code{exposure_i}} {A function that returns exposure \eqn{f_i(z)} of unit \eqn{i} under treatment \eqn{z} where
+#' \eqn{z} is the treatment for the whole sample. The inputs of the function are an index \code{i} and
+#' a vector \code{z}. For example, if the exposure of \eqn{i} under \eqn{z} is the treatment it receives, then
+#' we can write \code{exposure_i = function(z, i) { z[i] }}. See more examples in the README file.}
+#'  \item{\code{null_equiv}} {A function that takes two inputs from \code{exposure_i} and determines
+#' whether \eqn{f_i(z_1)} is equivalent to \eqn{f_i(z_2)} under the null hypothesis. For example, if the
+#' null is "extent of interference" type of null, we can write
+#' \code{null_equiv = function(e1, e2) {identical(e1, e2)}}.}
+#' }
+#' \code{controls} contains several components:
+#' \itemize{
+#'  \item{\code{method}} {Specifies the decomposition method. Should be either \code{"bimax"} or \code{"greedy"}.}
+#'  \item{\code{minr},\code{minc} or \code{minass}} {If \code{"bimax"} is used, \code{minr} and \code{minc}
+#'  should be supplied that specify the minimum number of units and assignments
+#'  in the bicliques found by the algorithm. If \code{"greedy"} is used, \code{minass} should be supplied.}
+#'  \item{\code{num_randomizations}} {Number of randomizations to perform. If it is not specified, will be set
+#'  to be 2000 by default.}
+#'  \item{(optional) \code{Xadj}} {The covariates that might affect Y. If it is specified in \code{controls},
+#'   will replace \code{Yrealized} by the residuals from the linear regression of \code{Yrealized} on \code{Xadj}
+#'   (number of rows in \code{Yrealized} and in \code{Xadj} should be the same).
+#'   Note that users would need to add an intercept to \code{Xadj} manually if they want.}
+#' }
+#'
+#' @return A list of items summarizing the randomization test. It contains the p-value \code{p.value},
+#' test statistic \code{statistic}, the randomization distribution of the test statistic \code{statistic.dist},
+#' and a list \code{MNE} of clique decomposition. Each element of \code{MNE} records one biclique decomposed
+#' from a multi-null exposure graph and contains its focal units and focal assignments.
+#'
+clique_test = function(Yrealized, Zrealized, hypothesis, teststat, alpha=0.05,
+                       controls=list(method="greedy", minass=10, num_randomizations=2000)){
 
-  addparam = list(...) # catch variable parameters
-  # setting default values if they do not exist
-  if (is.null(addparam$exclude_treated)) { exclude_treated=TRUE } else { exclude_treated=addparam$exclude_treated }
-  if (is.null(addparam$stop_at_Zobs)) { stop_at_Zobs=FALSE } else { stop_at_Zobs= addparam$stop_at_Zobs}
-  if (is.null(addparam$ret_pval)) { ret_pval=TRUE } else { ret_pval=addparam$ret_pval }
-  if (is.null(addparam$adj_Y)) { adj_Y=FALSE } else { adj_Y=(addparam$adj_Y)&(!is.null(Xadj)) } # is TRUE iff we specify it and Xadj is not null
+  # catch functions and controls from hypothesis and controls
+  design_fn = hypothesis$design_fn
+  exposure_i = hypothesis$exposure_i
+  null_equiv = hypothesis$null_equiv
+  num_randomizations = controls$num_randomizations
+  if (is.null(num_randomizations)) {num_randomizations = 2000} # set to be 2000 if not supplied
 
   # check length of Yrealized and Zrealized
   stopifnot("length of Yrealized and Zrealized should be the same" = (length(Yrealized) == length(Zrealized)))
 
-  # check decomposition control
-  decom = decomposition.control$method
+  # check components in hypothesis
+  stopifnot("hypothesis should contain all of design_fn, exposure_i and null_equiv"
+            = (!(is.null(design_fn) | is.null(exposure_i) | is.null(null_equiv))) )
+
+  # check decomposition in controls
+  decom = controls$method
   if (is.null(decom)) {
-    stop("decomposition.control should contain the decomposition method", call. = F)
+    stop("controls should contain the decomposition method", call. = F)
   } else if (decom=="bimax") {
-    minr = decomposition.control$minr
-    minc = decomposition.control$minc
+    minr = controls$minr
+    minc = controls$minc
     if (!(is.numeric(minr)&is.numeric(minc))) {
-      stop("if 'bimax' is used in decomposition.control, should supply both 'minr' and 'minc' as integer", call. = F)
+      stop("if 'bimax' is used in controls, should supply both 'minr' and 'minc' as integer", call. = F)
     }
   } else if (decom=="greedy"){
-    minass = decomposition.control$minass
+    minass = controls$minass
     if (!is.numeric(minass)) {
-      stop("if 'greedy' is used in decomposition.control, should supply 'minass' as integer", call. = F)
+      stop("if 'greedy' is used in controls, should supply 'minass' as integer", call. = F)
     }
   } else {
-    stop("the decomposition method in decomposition.control should be either 'bimax' or 'greedy'", call. = F)
+    stop("the decomposition method in controls should be either 'bimax' or 'greedy'", call. = F)
   }
 
-  # generate randomizations using design_fn & num_randomizations --> Z
+  # generate randomizations using design_fn & num_randomizations --> Z_m
   num_units = length(Yrealized)
-  Z = matrix(0, nrow=num_units, ncol=(num_randomizations+1))
-  Z[, 1] = Zrealized
+  Z_m = matrix(0, nrow=num_units, ncol=(num_randomizations+1))
+  Z_m[, 1] = Zrealized
   for (id_rand in 1:num_randomizations){
-    Z[, id_rand+1] = design_fn()
+    Z_m[, id_rand+1] = design_fn()
   }
   Zobs_id = 1
 
   # adjust for covariates, if any. Currently can only be adjusted by linear regression
-  if (adj_Y){
+  Xadj = controls$Xadj
+  if (!is.null(Xadj)){
     Yrealized = c(Yrealized - Xadj %*% solve(t(Xadj) %*% Xadj) %*% t(Xadj) %*% Yrealized)
   }
 
@@ -90,14 +110,14 @@ clique_test = function(Yrealized, Zrealized, design_fn, exposure_i, null_equiv,
   }
   for (id_rand in 1:(num_randomizations+1)){
     for (id_unit in 1:num_units){
-      expos[id_unit, id_rand, ] = exposure_i(Z[,id_rand], id_unit)
+      expos[id_unit, id_rand, ] = exposure_i(Z_m[,id_rand], id_unit)
     }
   }
 
   # decompose the null-exposure graph
   cat("decompose the null-exposure graph ... \n")
-  Z0 = 1:dim(Z)[2]
-  conditional_clique_idx = list()
+  Z0 = 1:dim(Z_m)[2]
+  MNE = list()
 
   # while length(Z0)>0, do:
   # 1. select one random from 1:length(Z0) as Zsub
@@ -105,11 +125,12 @@ clique_test = function(Yrealized, Zrealized, design_fn, exposure_i, null_equiv,
   # 3. decompose multiNEgraph to multi_clique, get one biclique is enough
   # 4. conditional_clique =union of multi_clique, delete multi_clique's col from Z0
   if (decom == 'bimax'){
+    method = "Clique test with Bimax decomposition."
     while (length(Z0)>0){
       cat("\r","Z0 now has length", length(Z0), '...')
 
       Zsub = sample(1:length(Z0), size = 1) # Zsub here is an index of vector Z0
-      # multiNEgraph = out_NEgraph_multi(Zsub, Z0, Z, num_units, exposure_fn)
+      # multiNEgraph = out_NEgraph_multi(Zsub, Z0, Z_m, num_units, exposure_fn)
       multiNEgraph = out_NEgraph_multi_separate(Zsub, Z0, expos, null_equiv, dim_exposure)
 
       iremove = which(rowSums(multiNEgraph!=0)==0)  # removes isolated units.
@@ -138,8 +159,11 @@ clique_test = function(Yrealized, Zrealized, design_fn, exposure_i, null_equiv,
       } else { # the biclique we get is only one single column where Zsub lies (b/c this col is all 1)
         next # perhaps just skip this loop and redraw a new Zsub
       }
-      conditional_clique_idx = append(conditional_clique_idx,
-                                      list(list(focal_unit = focal_unit, focal_assignment = focal_ass_match)))
+
+      Z_m_assignments = Z_m[,focal_ass_match]
+      rownames(Z_m_assignments) = 1:num_units
+      colnames(Z_m_assignments) = focal_ass_match
+      MNE = append(MNE, list(list(units = focal_unit, assignments = Z_m_assignments)))
       Z0 = Z0[-focal_ass]
 
       # stop when one of the biclique we found contains Zobs
@@ -150,13 +174,14 @@ clique_test = function(Yrealized, Zrealized, design_fn, exposure_i, null_equiv,
   }
 
   if (decom == 'greedy'){
+    method = "Clique test with greedy decomposition."
     while (length(Z0)>0){
       cat("\r","Z0 now has length", length(Z0), '...')
 
       failed_Zsub = c() # record Zsub that cannot give a greedy clique, to speed up the decomposition a bit
       while (length(failed_Zsub) < length(Z0)){
         Zsub = sample(setdiff(1:length(Z0), failed_Zsub), size = 1) # Zsub here is an index of vector Z0
-        # multiNEgraph = out_NEgraph_multi(Zsub, Z0, Z, num_units, exposure_fn)
+        # multiNEgraph = out_NEgraph_multi(Zsub, Z0, Z_m, num_units, exposure_fn)
         multiNEgraph = out_NEgraph_multi_separate(Zsub, Z0, expos, null_equiv, dim_exposure)
         num_ass = minass
         break_signal = FALSE
@@ -189,8 +214,10 @@ clique_test = function(Yrealized, Zrealized, design_fn, exposure_i, null_equiv,
         }
       }
 
-      conditional_clique_idx = append(conditional_clique_idx,
-                                      list(list(focal_unit = focal_unit, focal_assignment = focal_ass_match)))
+      Z_m_assignments = Z_m[,focal_ass_match]
+      rownames(Z_m_assignments) = 1:num_units
+      colnames(Z_m_assignments) = focal_ass_match
+      MNE = append(MNE, list(list(units = focal_unit, assignments = Z_m_assignments)))
       Z0 = Z0[-focal_ass]
 
       # stop when one of the biclique we found contains Zobs
@@ -203,17 +230,23 @@ clique_test = function(Yrealized, Zrealized, design_fn, exposure_i, null_equiv,
 
   # test, focal_unit and focal_ass_match
   cat("\n finding test statistics ... \n")
-  focal_unit_all = 1:num_units %in% focal_unit # indicator of whether a unit is focal
+  focal_unit_indicator = 1:num_units %in% focal_unit # indicator of whether a unit is focal
   test_stats = rep(0, length(focal_ass_match))
   for (zid in 1:length(focal_ass_match)){
-    Z_focal = Z[,focal_ass_match[zid]]
-    test_stats[zid] = teststat(Yrealized, Z_focal, focal_unit_all)
+    Z_focal = Z_m[,focal_ass_match[zid]]
+    test_stats[zid] = teststat(Yrealized, Z_focal, focal_unit_indicator)
   }
   tobs = test_stats[which(focal_ass_match==Zobs_id)]
   tvals = test_stats[which(focal_ass_match!=Zobs_id)]
   pval = out_pval(list(tobs=tobs, tvals=tvals), T, alpha) # here we use the previous out_pval function
 
-  retlist = list(pval=pval, tobs=tobs, tvals=tvals, conditional_clique=conditional_clique_idx, Z=Z)
+  if (sum(abs(tvals-tobs))/length(test_stats) < 1e-14){
+    warning("Randomization distribution is degenerate. p.value is not available. Consider changing the test statistic.
+            See ... for further discussions.")
+  }
+
+  # return
+  retlist = list(p.value=pval, statistic=tobs, statistic.dist=tvals, method=method, MNE=MNE)
   return(retlist)
 
 }

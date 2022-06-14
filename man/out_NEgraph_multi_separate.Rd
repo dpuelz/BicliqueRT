@@ -14,11 +14,6 @@ Please see Sec. 8 of the paper for more details.}
 
 \item{expos}{A three-way array with dimensions (number of units x number of randomizations x dimension of exposure).
 Its entry records the exposure \code{f_i(z)} of units under treatments, where the exposure has more than one dimensions.}
-
-\item{null_equiv}{A function that takes two inputs from \code{exposure_i} and determines
-whether \eqn{f_i(z_1)} is equivalent to \eqn{f_i(z_2)} under the null hypothesis. For example, if the
-null is "extent of interference" type of null, we can write
-\code{null_equiv = function(exposure_z1, exposure_z2) {identical(exposure_z1, exposure_z2)}}.}
 }
 \value{
 A matrix of dimension (\code{num_units} x \code{length(Z0)}) which is the multi-null exposure graph

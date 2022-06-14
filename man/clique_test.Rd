@@ -7,15 +7,10 @@
 clique_test(
   Yrealized,
   Zrealized,
-  design_fn,
-  exposure_i,
-  null_equiv,
-  decomposition.control = list(method = "greedy", minass = 10),
+  hypothesis,
   teststat,
   alpha = 0.05,
-  Xadj = NULL,
-  num_randomizations = 2000,
-  ...
+  controls = list(method = "greedy", minass = 10, num_randomizations = 2000)
 )
 }
 \arguments{
@@ -24,26 +19,8 @@ clique_test(
 \item{Zrealized}{A vector that gives the realization of treatment assignment. Its length should match \code{Yrealized}
 and is the number of units in the experiment.}
 
-\item{design_fn}{A function that returns a realization of treatment for the whole sample. For example,
-if each unit has equal probability \eqn{0.2} to receive the treatment independently, we can write
-\code{design_fn = function() { rbinom(num_units, 1, prob=0.2) }}.}
-
-\item{exposure_i}{A function that returns exposure \eqn{f_i(z)} of unit \eqn{i} under treatment \eqn{z} where
-\eqn{z} is the treatment for the whole sample. The inputs of the function are an index \code{i} and
-a vector \code{z}. For example, if the exposure of \eqn{i} under \eqn{z} is the treatment it receives, then
-we can write \code{exposure_i = function(z, i) { z[i] }}. See more examples in the README file.}
-
-\item{null_equiv}{A function that takes two inputs from \code{exposure_i} and determines
-whether \eqn{f_i(z_1)} is equivalent to \eqn{f_i(z_2)} under the null hypothesis. For example, if the
-null is "extent of interference" type of null, we can write
-\code{null_equiv = function(exposure_z1, exposure_z2) {identical(exposure_z1, exposure_z2)}}.}
-
-\item{decomposition.control}{A list that contains settings for biclique decomposition. It should contains
-a \code{method} which is either \code{"bimax"} or \code{"greedy"}. If \code{"bimax"} is used,
-\code{minr} and \code{minc} should be supplied that specify the minimum number of units and assignments
-in the bicliques found by the algorithm. If \code{"greedy"} is used, \code{minass} should be supplied.
-By default, it is set to be \code{list(method="greedy", minass=10)}. That is, by default it uses
-greedy decomposition algorithm with \code{minass=10}.}
+\item{hypothesis}{A list that contains three functions specifyting the experiment design and null hypothesis.
+See details for further illustration.}
 
 \item{teststat}{The test statistic used. It should contain at least (with order)
 \code{Y, Z, focal_units} as inputs where \code{Y} is the outcome vector, \code{Z} is the treatment vector
@@ -52,17 +29,46 @@ should have length equal to number of units and have the same ordering.}
 
 \item{alpha}{The significance level. By default it's \code{0.05}.}
 
-\item{Xadj}{The covariates that might affect Y. If not \code{NULL}, will replace \code{Y} by the residuals
-from the linear regression of \code{Y} on \code{Xadj}. Note that users would need to add an intercept to \code{Xadj} manually if they want.
-To adjust \code{Xadj}, pass in \code{adj_Y=TRUE} and a non-empty \code{NULL} that has the same number of rows as \code{Y}.}
-
-\item{num_randomizations}{Number of randomizations to perform. By default it's \code{2000}.}
-
-\item{...}{Other stuff.}
+\item{controls}{A list that contains settings for biclique decomposition and covariates adjustment.
+By default it is \code{list(method="greedy", minass=10, num_randomizations=2000)}.
+That is, by default it uses greedy decomposition algorithm with \code{minass=10}, and the number of
+randomizations to perform is 2000. See details for further illustration.}
 }
 \value{
-A list of items summarizing the randomization test.
+A list of items summarizing the randomization test. It contains the p-value \code{p.value},
+test statistic \code{statistic}, the randomization distribution of the test statistic \code{statistic.dist},
+and a list \code{MNE} of clique decomposition. Each element of \code{MNE} records one biclique decomposed
+from a multi-null exposure graph and contains its focal units and focal assignments.
 }
 \description{
 The generalized main randomization test function.
+}
+\details{
+\code{hypothesis} contains three functions:
+\itemize{
+ \item{\code{design_fn}} {A function that returns a realization of treatment for the whole sample. For example,
+if each unit has equal probability \eqn{0.2} to receive the treatment independently, we can write
+\code{design_fn = function() { rbinom(num_units, 1, prob=0.2) }}.}
+ \item{\code{exposure_i}} {A function that returns exposure \eqn{f_i(z)} of unit \eqn{i} under treatment \eqn{z} where
+\eqn{z} is the treatment for the whole sample. The inputs of the function are an index \code{i} and
+a vector \code{z}. For example, if the exposure of \eqn{i} under \eqn{z} is the treatment it receives, then
+we can write \code{exposure_i = function(z, i) { z[i] }}. See more examples in the README file.}
+ \item{\code{null_equiv}} {A function that takes two inputs from \code{exposure_i} and determines
+whether \eqn{f_i(z_1)} is equivalent to \eqn{f_i(z_2)} under the null hypothesis. For example, if the
+null is "extent of interference" type of null, we can write
+\code{null_equiv = function(e1, e2) {identical(e1, e2)}}.}
+}
+\code{controls} contains several components:
+\itemize{
+ \item{\code{method}} {Specifies the decomposition method. Should be either \code{"bimax"} or \code{"greedy"}.}
+ \item{\code{minr},\code{minc} or \code{minass}} {If \code{"bimax"} is used, \code{minr} and \code{minc}
+ should be supplied that specify the minimum number of units and assignments
+ in the bicliques found by the algorithm. If \code{"greedy"} is used, \code{minass} should be supplied.}
+ \item{\code{num_randomizations}} {Number of randomizations to perform. If it is not specified, will be set
+ to be 2000 by default.}
+ \item{(optional) \code{Xadj}} {The covariates that might affect Y. If it is specified in \code{controls},
+  will replace \code{Yrealized} by the residuals from the linear regression of \code{Yrealized} on \code{Xadj}
+  (number of rows in \code{Yrealized} and in \code{Xadj} should be the same).
+  Note that users would need to add an intercept to \code{Xadj} manually if they want.}
+}
 }
