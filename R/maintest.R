@@ -10,8 +10,8 @@
 #' That is, by default it uses greedy decomposition algorithm with \code{minass=10}, and the number of
 #' randomizations to perform is 2000. See details for further illustration.
 #' @param teststat The test statistic used. It should contain at least (with order)
-#' \code{Y, Z, focal_units} as inputs where \code{Y} is the outcome vector, \code{Z} is the treatment vector
-#' and \code{focal_units} is a 0-1 vector indicating whether a unit is focal (=1) or not (=0). All three inputs
+#' \code{Y, Z, focal_unit_indicator} as inputs where \code{Y} is the outcome vector, \code{Z} is the treatment vector
+#' and \code{focal_unit_indicator} is a 0-1 vector indicating whether a unit is focal (=1) or not (=0). All three inputs
 #' should have length equal to number of units and have the same ordering.
 #' @param alpha The significance level. By default it's \code{0.05}.
 #'
