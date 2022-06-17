@@ -6,8 +6,8 @@
 #' @param hypothesis A list that contains three functions specifyting the experiment design and null hypothesis.
 #' See details for further illustration.
 #' @param controls A list that contains settings for biclique decomposition and covariates adjustment.
-#' By default it is \code{list(method="greedy", minass=10, num_randomizations=2000)}.
-#' That is, by default it uses greedy decomposition algorithm with \code{minass=10}, and the number of
+#' By default it is \code{list(method="greedy", mina=10, num_randomizations=2000)}.
+#' That is, by default it uses greedy decomposition algorithm with \code{mina=10}, and the number of
 #' randomizations to perform is 2000. See details for further illustration.
 #' @param teststat The test statistic used. It should contain at least (with order)
 #' \code{Y, Z, focal_unit_indicator} as inputs where \code{Y} is the outcome vector, \code{Z} is the treatment vector
@@ -32,9 +32,9 @@
 #' \code{controls} contains several components:
 #' \itemize{
 #'  \item{\code{method}} {Specifies the decomposition method. Should be either \code{"bimax"} or \code{"greedy"}.}
-#'  \item{\code{minr},\code{minc} or \code{minass}} {If \code{"bimax"} is used, \code{minr} and \code{minc}
+#'  \item{\code{minr},\code{minc} or \code{mina}} {If \code{"bimax"} is used, \code{minr} and \code{minc}
 #'  should be supplied that specify the minimum number of units and assignments
-#'  in the bicliques found by the algorithm. If \code{"greedy"} is used, \code{minass} should be supplied.}
+#'  in the bicliques found by the algorithm. If \code{"greedy"} is used, \code{mina} should be supplied.}
 #'  \item{\code{num_randomizations}} {Number of randomizations to perform. If it is not specified, will be set
 #'  to be 2000 by default.}
 #'  \item{(optional) \code{Xadj}} {The covariates that might affect Y. If it is specified in \code{controls},
@@ -49,7 +49,7 @@
 #' from a multi-null exposure graph and contains its focal units and focal assignments.
 #'
 clique_test = function(Yrealized, Zrealized, hypothesis, teststat, alpha=0.05,
-                       controls=list(method="greedy", minass=10, num_randomizations=2000)){
+                       controls=list(method="greedy", mina=10, num_randomizations=2000)){
 
   # catch functions and controls from hypothesis and controls
   design_fn = hypothesis$design_fn
@@ -76,9 +76,9 @@ clique_test = function(Yrealized, Zrealized, hypothesis, teststat, alpha=0.05,
       stop("if 'bimax' is used in controls, should supply both 'minr' and 'minc' as integer", call. = F)
     }
   } else if (decom=="greedy"){
-    minass = controls$minass
-    if (!is.numeric(minass)) {
-      stop("if 'greedy' is used in controls, should supply 'minass' as integer", call. = F)
+    mina = controls$mina
+    if (!is.numeric(mina)) {
+      stop("if 'greedy' is used in controls, should supply 'mina' as integer", call. = F)
     }
   } else {
     stop("the decomposition method in controls should be either 'bimax' or 'greedy'", call. = F)
@@ -183,7 +183,7 @@ clique_test = function(Yrealized, Zrealized, hypothesis, teststat, alpha=0.05,
         Zsub = sample(setdiff(1:length(Z0), failed_Zsub), size = 1) # Zsub here is an index of vector Z0
         # multiNEgraph = out_NEgraph_multi(Zsub, Z0, Z_m, num_units, exposure_fn)
         multiNEgraph = out_NEgraph_multi_separate(Zsub, Z0, expos, null_equiv, dim_exposure)
-        num_ass = minass
+        num_ass = mina
         break_signal = FALSE
 
         ### should not remove isolated units here, otherwise rownames of multiNEgraph is distorted,
@@ -303,7 +303,7 @@ clique_test_contrast = function(Y, Z, Z_a, Z_b, Zobs_id, Xadj=NULL, alpha=0.05, 
   }
 
   if (decom == 'greedy'){
-    decomp = out_clique_decomposition_greedy(NEgraph, Zobs_id, num_ass=addparam$minass, stop_at_Zobs)
+    decomp = out_clique_decomposition_greedy(NEgraph, Zobs_id, num_ass=addparam$mina, stop_at_Zobs)
     if(stop_at_Zobs){
       conditional_clique = decomp
     } else {conditional_clique = out_clique(Zobs_id,decomp)}

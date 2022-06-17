@@ -10,7 +10,7 @@ clique_test(
   hypothesis,
   teststat,
   alpha = 0.05,
-  controls = list(method = "greedy", minass = 10, num_randomizations = 2000)
+  controls = list(method = "greedy", mina = 10, num_randomizations = 2000)
 )
 }
 \arguments{
@@ -30,8 +30,8 @@ should have length equal to number of units and have the same ordering.}
 \item{alpha}{The significance level. By default it's \code{0.05}.}
 
 \item{controls}{A list that contains settings for biclique decomposition and covariates adjustment.
-By default it is \code{list(method="greedy", minass=10, num_randomizations=2000)}.
-That is, by default it uses greedy decomposition algorithm with \code{minass=10}, and the number of
+By default it is \code{list(method="greedy", mina=10, num_randomizations=2000)}.
+That is, by default it uses greedy decomposition algorithm with \code{mina=10}, and the number of
 randomizations to perform is 2000. See details for further illustration.}
 }
 \value{
@@ -61,9 +61,9 @@ null is "extent of interference" type of null, we can write
 \code{controls} contains several components:
 \itemize{
  \item{\code{method}} {Specifies the decomposition method. Should be either \code{"bimax"} or \code{"greedy"}.}
- \item{\code{minr},\code{minc} or \code{minass}} {If \code{"bimax"} is used, \code{minr} and \code{minc}
+ \item{\code{minr},\code{minc} or \code{mina}} {If \code{"bimax"} is used, \code{minr} and \code{minc}
  should be supplied that specify the minimum number of units and assignments
- in the bicliques found by the algorithm. If \code{"greedy"} is used, \code{minass} should be supplied.}
+ in the bicliques found by the algorithm. If \code{"greedy"} is used, \code{mina} should be supplied.}
  \item{\code{num_randomizations}} {Number of randomizations to perform. If it is not specified, will be set
  to be 2000 by default.}
  \item{(optional) \code{Xadj}} {The covariates that might affect Y. If it is specified in \code{controls},
