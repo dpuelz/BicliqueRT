@@ -66,6 +66,44 @@ two_sided_test = function(tobs, tvals, alpha, tol=1e-14) {
   return(m1 + m2)
 }
 
+#' The Edge-Level Contrast Statistic
+#'
+#' The Edge-Level Contrast Statistic in Athey et al. (2018). It equals
+#' \eqn{\frac{\sum_{i,j\neq i} F_i G_{ij} (1-F_j) W_j Y_i^{obs}}{\sum_{i,j\neq i} F_i G_{ij} (1-F_j) W_j} -
+#' \frac{\sum_{i,j\neq i} F_i G_{ij} (1-F_j) (1-W_j) Y_i^{obs}}{\sum_{i,j\neq i} F_i G_{ij} (1-F_j) (1-W_j)
+#' }}. \eqn{G} is the adjacency matrix and \eqn{F} is the vector of focal indicator.
+#'
+#' @seealso Athey et al. (2018) Exact p-Values for Network Interference, Equation 5.
+T_elc = function(y, z, is_focal){
+  v1 = t(is_focal*y) %*% G %*% ((1-is_focal)*z) / t(is_focal) %*% G %*% ((1-is_focal)*z)
+  v2 = t(is_focal*y) %*% G %*% ((1-is_focal)*(1-z)) / t(is_focal) %*% G %*% ((1-is_focal)*(1-z))
+  v1-v2
+}
+
+#' Score Test Statistic
+#'
+#' The Score Test Statistic in Athey et al. (2018). It equals
+#' \eqn{ \mathrm{cov}\left( Y_i^{obs}-\hat{\alpha}-\hat{\tau}_{d} W_i,~ \sum_{j=1}^N W_j \bar{G}_{ij} \bigg| \sum_{j=1}^N G_{ij} >0, F_i=1 \right)}.
+#' \eqn{G} is the adjacency matrix and \eqn{F} is the vector of focal indicator.
+#'
+#' @seealso Athey et al. (2018) Exact p-Values for Network Interference Equation 7.
+T_score = function(y, z, is_focal){
+  R = rowSums(G)
+
+  Gij_bar = G/rowSums(G)
+  Gij_bar[is.na(Gij_bar)] = 0
+
+  Peer_i = Gij_bar %*% z
+
+  fit0 = lm(y ~ z) # regression model under no peer effects.
+  e_r = fit0$residuals
+  ### T_score?
+  Icond = as.logical(is_focal*(R>0))
+  stopifnot("Not enough units to condition on"=(sum(Icond) > 0))
+  abs( cov(e_r[Icond], Peer_i[Icond]) )
+}
+
+
 
 #' Calculates p-value or test decision
 #'
