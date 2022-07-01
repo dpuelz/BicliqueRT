@@ -66,43 +66,72 @@ two_sided_test = function(tobs, tvals, alpha, tol=1e-14) {
   return(m1 + m2)
 }
 
-#' The Edge-Level Contrast Statistic
+
+#' Generate test statistics
 #'
-#' The Edge-Level Contrast Statistic in Athey et al. (2018). It equals
-#' \eqn{\frac{\sum_{i,j\neq i} F_i G_{ij} (1-F_j) W_j Y_i^{obs}}{\sum_{i,j\neq i} F_i G_{ij} (1-F_j) W_j} -
-#' \frac{\sum_{i,j\neq i} F_i G_{ij} (1-F_j) (1-W_j) Y_i^{obs}}{\sum_{i,j\neq i} F_i G_{ij} (1-F_j) (1-W_j)
-#' }}. \eqn{G} is the adjacency matrix and \eqn{F} is the vector of focal indicator.
+#' Generate default test statistics given a network structure.
 #'
-#' @seealso Athey et al. (2018) Exact p-Values for Network Interference, Equation 5.
-T_elc = function(y, z, is_focal){
-  v1 = t(is_focal*y) %*% G %*% ((1-is_focal)*z) / t(is_focal) %*% G %*% ((1-is_focal)*z)
-  v2 = t(is_focal*y) %*% G %*% ((1-is_focal)*(1-z)) / t(is_focal) %*% G %*% ((1-is_focal)*(1-z))
-  v1-v2
+#' @param G The \eqn{N\times N} adjacency matrix where \eqn{N} is the number of units. \code{G[i,j]} equals 1
+#' iff there is an edge between units \code{i} and \code{j} in the network, and we set
+#' all diagonal entries of \code{G} to be 0.
+#' @param type The statistics to use. Currently support \code{"elc","score","htn"}
+#' in Athey et al. (2018) Exact p-Values for Network Interference section 5.
+#' @details In the following \eqn{G} is the adjacency matrix and \eqn{F} is the vector of focal indicator.
+#' \itemize{
+#' \item \code{"elc"} is the edge-level-contrast test statistic, which equals
+#' \eqn{\frac{\sum_{i,j\neq i} F_i G_{ij} (1-F_j) Z_j Y_i^{obs}}{\sum_{i,j\neq i} F_i G_{ij} (1-F_j) Z_j} -
+#' \frac{\sum_{i,j\neq i} F_i G_{ij} (1-F_j) (1-Z_j) Y_i^{obs}}{\sum_{i,j\neq i} F_i G_{ij} (1-F_j) (1-Z_j)
+#' }}
+#'
+#' \item \code{"score"} is a score statistic, which equals
+#' \eqn{ \mathrm{cov}\left( Y_i^{obs}-\hat{\alpha}-\hat{\tau}_{d} Z_i,~ \sum_{j=1}^N Z_j \bar{G}_{ij} \bigg| \sum_{j=1}^N G_{ij} >0, F_i=1 \right)}.
+#'
+#' \item \code{"htn"} is the has-treated-neighbor statistic, which equals
+#' \eqn{\frac{1}{\mathrm{sd}_{Y_F^{obs}}\mathrm{sd}_{\mathrm{indicator}_F} } \frac{1}{N_F} \sum_{i:F_i=1}
+#' (Y_i^{obs}-\bar{Y}_F^{obs})1\{\sum_j G_{ij} Z_j (1-F_j) >0 \} }
+#' where \eqn{N_F} is the number of focal units, \eqn{\cdot_F} means restricting a variable to focal units only,
+#' and \eqn{\bar{Y}_F^{obs}} is the sample average of \eqn{Y_F^{obs}}.
+#' }
+#' @export
+gen_tstat = function(G, type) {
+  stopifnot("type should be one of 'elc', 'score' and 'htn'" = (type %in% c("elc","score","htn")))
+  if (type == "elc") {
+    f = function(y, z, is_focal) {
+      v1 = t(is_focal*y) %*% G %*% ((1-is_focal)*z) / t(is_focal) %*% G %*% ((1-is_focal)*z)
+      v2 = t(is_focal*y) %*% G %*% ((1-is_focal)*(1-z)) / t(is_focal) %*% G %*% ((1-is_focal)*(1-z))
+      v1-v2
+    }
+  }
+  if (type == "score") {
+    f = function(y, z, is_focal) {
+      R = rowSums(G)
+      Gij_bar = G/rowSums(G)
+      Gij_bar[is.na(Gij_bar)] = 0
+      Peer_i = Gij_bar %*% z
+      fit0 = lm(y ~ z) # regression model under no peer effects.
+      e_r = fit0$residuals
+      ### T_score?
+      Icond = as.logical(is_focal*(R>0))
+      stopifnot("Not enough units to condition on"=(sum(Icond) > 0))
+      abs( cov(e_r[Icond], Peer_i[Icond]) )
+    }
+  }
+  if (type == "htn") {
+    f = function(y, z, is_focal){
+      Y_F = y[is_focal]
+      sd_F = sd(Y_F)
+      neighbor_treated = G %*% (z*(!is_focal)) > 0
+      neighbor_treated_F = neighbor_treated[is_focal]
+      sd_neighbor_treated_F = sd(neighbor_treated_F)
+      Tout = 0
+      if ((sd_F>0) & (sd_neighbor_treated_F>0)) {
+        Tout = mean( (Y_F-mean(Y_F)) * (neighbor_treated_F-mean(neighbor_treated_F)) ) / (sd_F*sd_neighbor_treated_F)
+      }
+      Tout
+    }
+  }
+  return(f)
 }
-
-#' Score Test Statistic
-#'
-#' The Score Test Statistic in Athey et al. (2018). It equals
-#' \eqn{ \mathrm{cov}\left( Y_i^{obs}-\hat{\alpha}-\hat{\tau}_{d} W_i,~ \sum_{j=1}^N W_j \bar{G}_{ij} \bigg| \sum_{j=1}^N G_{ij} >0, F_i=1 \right)}.
-#' \eqn{G} is the adjacency matrix and \eqn{F} is the vector of focal indicator.
-#'
-#' @seealso Athey et al. (2018) Exact p-Values for Network Interference Equation 7.
-T_score = function(y, z, is_focal){
-  R = rowSums(G)
-
-  Gij_bar = G/rowSums(G)
-  Gij_bar[is.na(Gij_bar)] = 0
-
-  Peer_i = Gij_bar %*% z
-
-  fit0 = lm(y ~ z) # regression model under no peer effects.
-  e_r = fit0$residuals
-  ### T_score?
-  Icond = as.logical(is_focal*(R>0))
-  stopifnot("Not enough units to condition on"=(sum(Icond) > 0))
-  abs( cov(e_r[Icond], Peer_i[Icond]) )
-}
-
 
 
 #' Calculates p-value or test decision

@@ -1,188 +1,3 @@
-#' Generate decompositions of multi-null exposure graphs given null hypothesis
-#'
-#' @inheritParams clique_test
-#'
-#' @return a list \code{MNE} of clique decomposition and specified \code{controls}.
-#' Each element of \code{MNE} records one biclique decomposed from a multi-null exposure
-#' graph and contains its focal units and focal assignments.
-#'
-#' @export
-biclique.decompose = function(Zrealized, hypothesis,
-                              controls=list(method="greedy", mina=10, num_randomizations=2000)){
-
-  # catch functions and controls from hypothesis and controls
-  design_fn = hypothesis$design_fn
-  exposure_i = hypothesis$exposure_i
-  null_equiv = hypothesis$null_equiv
-  num_randomizations = controls$num_randomizations
-  if (is.null(num_randomizations)) {num_randomizations = 2000} # set to be 2000 if not supplied
-
-  # check components in hypothesis
-  stopifnot("hypothesis should contain all of design_fn, exposure_i and null_equiv"
-            = (!(is.null(design_fn) | is.null(exposure_i) | is.null(null_equiv))) )
-
-  # check decomposition in controls
-  decom = controls$method
-  if (is.null(decom)) {
-    stop("controls should contain the decomposition method", call. = F)
-  } else if (decom=="bimax") {
-    minr = controls$minr
-    minc = controls$minc
-    if (!(is.numeric(minr)&is.numeric(minc))) {
-      stop("if 'bimax' is used in controls, should supply both 'minr' and 'minc' as integer", call. = F)
-    }
-  } else if (decom=="greedy"){
-    mina = controls$mina
-    if (!is.numeric(mina)) {
-      stop("if 'greedy' is used in controls, should supply 'mina' as integer", call. = F)
-    }
-  } else {
-    stop("the decomposition method in controls should be either 'bimax' or 'greedy'", call. = F)
-  }
-
-  # generate randomizations using design_fn & num_randomizations --> Z_m
-  num_units = length(Zrealized)
-  Z_m = matrix(0, nrow=num_units, ncol=(num_randomizations+1))
-  Z_m[, 1] = Zrealized
-  for (id_rand in 1:num_randomizations){
-    Z_m[, id_rand+1] = design_fn()
-  }
-  Zobs_id = 1
-
-  # generate exposure for each unit under different treatment assignment
-  dim_exposure = length(exposure_i(Zrealized, 1)) # get how long the exposure is
-  if (dim_exposure > 1){
-    expos = array(0, c(num_units, num_randomizations+1, dim_exposure))
-  } else if (dim_exposure == 1){
-    expos = array(0, c(num_units, num_randomizations+1, 2)) # to make sure expos is always 3-D
-  } else {
-    stop("exposure_i should output a vector of length no less than 1")
-  }
-  for (id_rand in 1:(num_randomizations+1)){
-    for (id_unit in 1:num_units){
-      expos[id_unit, id_rand, ] = exposure_i(Z_m[,id_rand], id_unit)
-    }
-  }
-
-  # decompose the null-exposure graph
-  cat("decompose the null-exposure graph ... \n")
-  Z0 = 1:dim(Z_m)[2]
-  MNE = list()
-
-  # while length(Z0)>0, do:
-  # 1. select one random from 1:length(Z0) as Zsub
-  # 2. generate multiNEgraph = out_NEgraph_multi(Zsub, Z0, expos)
-  # 3. decompose multiNEgraph to multi_clique, get one biclique is enough
-  # 4. conditional_clique =union of multi_clique, delete multi_clique's col from Z0
-  if (decom == 'bimax'){
-    method = "Clique test with Bimax decomposition."
-    while (length(Z0)>0){
-      cat("\r","Z0 now has length", length(Z0), '...')
-
-      Zsub = sample(1:length(Z0), size = 1) # Zsub here is an index of vector Z0
-      # multiNEgraph = out_NEgraph_multi(Zsub, Z0, Z_m, num_units, exposure_fn)
-      multiNEgraph = out_NEgraph_multi_separate(Zsub, Z0, expos, null_equiv, dim_exposure)
-
-      iremove = which(rowSums(multiNEgraph!=0)==0)  # removes isolated units.
-      if(length(iremove)!=0){ multiNEgraph = multiNEgraph[-iremove,] }
-
-      numleft = ncol(multiNEgraph)
-      minr.new = min(minr, numleft)
-      minc.new = min(minc, numleft)
-      bitest = biclust(multiNEgraph, method=BCBimax(), minr.new, minc.new, number=1)
-      bicliqMat = bicluster(multiNEgraph, bitest)
-      themat = bicliqMat$Bicluster1
-
-      # if current minr & minc gives no biclique decom, try a smaller one
-      while((length(themat)==0) & (numleft > 1)){
-        numleft = numleft - 1
-        minr.new = min(minr, numleft)
-        minc.new = min(minc, numleft)
-        bitest = biclust(multiNEgraph, method=BCBimax(), minr.new, minc.new, number=1)
-        bicliqMat = bicluster(multiNEgraph, bitest)
-        themat = bicliqMat$Bicluster1
-      }
-
-      if (is.matrix(themat)){
-        focal_unit = as.integer(rownames(themat))
-        focal_ass = as.integer(colnames(themat)); focal_ass_match = Z0[focal_ass]
-      } else { # the biclique we get is only one single column where Zsub lies (b/c this col is all 1)
-        next # perhaps just skip this loop and redraw a new Zsub
-      }
-
-      Z_m_assignments = Z_m[,focal_ass_match]
-      rownames(Z_m_assignments) = 1:num_units
-      colnames(Z_m_assignments) = focal_ass_match
-      MNE = append(MNE, list(list(units = focal_unit, assignments = Z_m_assignments)))
-      Z0 = Z0[-focal_ass]
-
-      # stop when one of the biclique we found contains Zobs
-      if (sum(focal_ass_match==Zobs_id)>0){
-        break
-      }
-    }
-  }
-
-  if (decom == 'greedy'){
-    method = "Clique test with greedy decomposition."
-    while (length(Z0)>0){
-      cat("\r","Z0 now has length", length(Z0), '...')
-
-      failed_Zsub = c() # record Zsub that cannot give a greedy clique, to speed up the decomposition a bit
-      while (length(failed_Zsub) < length(Z0)){
-        Zsub = sample(setdiff(1:length(Z0), failed_Zsub), size = 1) # Zsub here is an index of vector Z0
-        # multiNEgraph = out_NEgraph_multi(Zsub, Z0, Z_m, num_units, exposure_fn)
-        multiNEgraph = out_NEgraph_multi_separate(Zsub, Z0, expos, null_equiv, dim_exposure)
-        num_ass = mina
-        break_signal = FALSE
-
-        ### should not remove isolated units here, otherwise rownames of multiNEgraph is distorted,
-        ### then get_clique function will go wrong when matching rownames.
-        # iremove = which(rowSums(multiNEgraph!=0)==0)  # removes isolated units.
-        # if(length(iremove)!=0){ multiNEgraph = multiNEgraph[-iremove,] }
-
-        if (dim(multiNEgraph)[2]<=num_ass){ # when remaining cols not enough to do the greedy algo.
-          units_leftover = which(rowSums(multiNEgraph^2)==dim(multiNEgraph^2)[2])
-          themat = multiNEgraph[units_leftover,]
-          break_signal = TRUE
-        } else {
-          test = out_greedy_decom(multiNEgraph, num_ass)
-          themat = test$clique
-        }
-        if (is.matrix(themat)) {
-          if (dim(themat)[1]>0){
-            focal_unit = as.integer(rownames(themat))
-            focal_ass = as.integer(colnames(themat)); focal_ass_match = Z0[focal_ass]
-            break # break the (length(failed_Zsub) < length(Z0)) loop
-          } else { # the decomposed clique is a 0xn matrix
-            failed_Zsub = c(failed_Zsub, Zsub)
-            next
-          }
-        } else { # the decomposed clique is not a matrix, skip to next loop
-          failed_Zsub = c(failed_Zsub, Zsub)
-          next
-        }
-      }
-
-      Z_m_assignments = Z_m[,focal_ass_match]
-      rownames(Z_m_assignments) = 1:num_units
-      colnames(Z_m_assignments) = focal_ass_match
-      MNE = append(MNE, list(list(units = focal_unit, assignments = Z_m_assignments)))
-      Z0 = Z0[-focal_ass]
-
-      # stop when one of the biclique we found contains Zobs
-      if (sum(focal_ass_match==Zobs_id)>0){
-        break
-      }
-      if (break_signal) {break}
-    }
-  }
-
-  return(list(MNE=MNE, controls=controls, method=method))
-}
-
-
-
 #' Generate the multi-null exposure graph.
 #'
 #' @param Zsub An integer from \code{1:length(Z0)} that represents a sample from \code{Z0}.
@@ -227,21 +42,25 @@ out_NEgraph_multi_separate = function(Zsub, Z0, expos, null_equiv, dim_exposure)
   expos_sub = expos[, Z0, ]
   num_units = dim(expos_sub)[1]; num_rand = dim(expos_sub)[2]; dim_expos_sub = dim(expos_sub)[3]
 
-  multiNEgraph = matrix(0, nrow = num_units, ncol = num_rand)
-  if (dim_exposure == 1){
-    for (i in 1:num_units){
-      # compare equivalence of Zsub and each z in Z0
-      for (zid in 1:num_rand){
-        multiNEgraph[i, zid] = null_equiv(expos_sub[i, zid, 1], expos_sub[i, Zsub, 1])
+  if (length(Z0) > 1) {
+    multiNEgraph = matrix(0, nrow = num_units, ncol = num_rand)
+    if (dim_exposure == 1){
+      for (i in 1:num_units){
+        # compare equivalence of Zsub and each z in Z0
+        for (zid in 1:num_rand){
+          multiNEgraph[i, zid] = null_equiv(expos_sub[i, zid, 1], expos_sub[i, Zsub, 1])
+        }
+      }
+    } else {
+      for (i in 1:num_units){
+        # compare equivalence of Zsub and each z in Z0
+        for (zid in 1:num_rand){
+          multiNEgraph[i, zid] = null_equiv(expos_sub[i, zid, ], expos_sub[i, Zsub, ])
+        }
       }
     }
   } else {
-    for (i in 1:num_units){
-      # compare equivalence of Zsub and each z in Z0
-      for (zid in 1:num_rand){
-        multiNEgraph[i, zid] = null_equiv(expos_sub[i, zid, ], expos_sub[i, Zsub, ])
-      }
-    }
+    multiNEgraph = matrix(1, nrow = num_units, ncol = 1)
   }
 
   multiNEgraph = multiNEgraph * 1
@@ -384,23 +203,26 @@ out_greedy_decom = function(NEgraph, num_ass){
   CONT = TRUE
   NEgraph_original = NEgraph
   get_clique_size = function(units) {
+    units = as.character(units)
     # the input units are actual row names of NEgraph_original
-    units
     ne_temp = matrix(NEgraph_original[units,], ncol=ncol(NEgraph_original))
     # sum(apply(ne_temp^2, 2, prod)) # the apply() gives 1 for assignments which all focals are connected to.
     sum(colSums(ne_temp) == length(units))
   }
   get_clique = function(units) {
+    units = as.character(units)
     ne_temp = matrix(NEgraph_original[units,], ncol=ncol(NEgraph_original))
     # a = apply(ne_temp^2, 2, prod) # =1 for assignments which all focals are connected to.
     a = (colSums(ne_temp) == length(units)) * 1 # should not use as.numeric: keep the column names
     keep_ass = which(a==1)
-    return(NEgraph_original[units, keep_ass])
-  }
-
-  # if the NEgraph contains a biclique that incorporates all units, and numcol>num_ass, return directly
-  if (get_clique_size(1:dim(NEgraph_original)[1]) > num_ass ) {
-    return(list(clique=get_clique(1:dim(NEgraph_original)[1])))
+    return_clique = NEgraph_original[units, keep_ass]
+    if (is.matrix(return_clique)) {return(NEgraph_original[units, keep_ass])} else {
+      # either a 1xN or Nx1 clique
+      return_clique = matrix(return_clique, nrow = length(units), ncol = length(keep_ass))
+      rownames(return_clique) = units
+      colnames(return_clique) = keep_ass
+      return (return_clique)
+    }
   }
 
   while(CONT) {
@@ -426,10 +248,17 @@ out_greedy_decom = function(NEgraph, num_ass){
       CONT = FALSE
     }
   }
+  if (length(focal_units)==0) {
+    # if the NEgraph contains a biclique that incorporates all units, and numcol>=num_ass, return directly
+    if (get_clique_size(as.integer(rownames(NEgraph_original))) >= num_ass ) {
+      return(list(clique = get_clique(as.integer(rownames(NEgraph_original))) ))
+    } else {return(list(clique = NULL))} # no clique found under this threshold
+  } else {
+    focal_ass = as.numeric(colnames(NEgraph))
+    clique = get_clique(focal_units)
+    return(list(clique = clique))
 
-  focal_ass = as.numeric(colnames(NEgraph))
-  clique = get_clique(focal_units)
-  return(list(clique=clique))
+  }
 }
 
 #' Decomposing Null Exposure Graph Using the Greedy Algorithm

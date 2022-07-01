@@ -1,6 +1,6 @@
 importFrom("stats", "rnorm", "runif", "lm", "coef","rbinom")
 importFrom("Matrix", "Matrix")
-importFrom("biclust", "biclust", "bicluster", "BCBimax")
+importFrom("biclust", "biclust", "bicluster", "BCBimax", "biclusternumber")
 importFrom("foreach", "%dopar%")
 export(ate)
 export(biclique.decompose)

@@ -4,15 +4,7 @@
 \alias{clique_test}
 \title{The generalized main randomization test function.}
 \usage{
-clique_test(
-  Yrealized,
-  Zrealized,
-  hypothesis,
-  teststat,
-  alpha = 0.05,
-  controls = list(method = "greedy", mina = 10, num_randomizations = 2000),
-  biclique_decom = NULL
-)
+clique_test(Yrealized, Zrealized, teststat, alpha = 0.05, biclique_decom)
 }
 \arguments{
 \item{Yrealized}{The observed outcome vector.}
@@ -20,21 +12,11 @@ clique_test(
 \item{Zrealized}{A vector that gives the realization of treatment assignment. Its length should match \code{Yrealized}
 and is the number of units in the experiment.}
 
-\item{hypothesis}{A list that contains three functions specifyting the experiment design and null hypothesis.
-See details for further illustration.}
-
 \item{teststat}{The test statistic used. See details for further illustration.}
 
 \item{alpha}{The significance level. By default it's \code{0.05}.}
 
-\item{controls}{A list that contains settings for biclique decomposition and covariates adjustment.
-By default it is \code{list(method="greedy", mina=10, num_randomizations=2000)}.
-That is, by default it uses greedy decomposition algorithm with \code{mina=10}, and the number of
-randomizations to perform is 2000. See details for further illustration.}
-
-\item{biclique_decom}{Output from \code{biclique.decompose} function that contains a biclique decomposition and controls.
-Default is \code{NULL}. If specified, it will supercede settings of \code{Zrealized}, \code{hypothesis} and \code{controls},
-and proceed directly to find the test statistic and its randomization distribution.}
+\item{biclique_decom}{Output from \code{biclique.decompose} function that contains a biclique decomposition and controls.}
 }
 \value{
 A list of items summarizing the randomization test. It contains the p-value \code{p.value},
@@ -46,49 +28,18 @@ from a multi-null exposure graph and contains its focal units and focal assignme
 The generalized main randomization test function.
 }
 \details{
-\code{hypothesis} contains three functions:
-\itemize{
- \item{\code{design_fn}} {A function that returns a realization of treatment for the whole sample. For example,
-if each unit has equal probability \eqn{0.2} to receive the treatment independently, we can write
-\code{design_fn = function() { rbinom(num_units, 1, prob=0.2) }}.}
- \item{\code{exposure_i}} {A function that returns exposure \eqn{f_i(z)} of unit \eqn{i} under treatment \eqn{z} where
-\eqn{z} is the treatment for the whole sample. The inputs of the function are an index \code{i} and
-a vector \code{z}. For example, if the exposure of \eqn{i} under \eqn{z} is the treatment it receives, then
-we can write \code{exposure_i = function(z, i) { z[i] }}. See more examples in the README file.}
- \item{\code{null_equiv}} {A function that takes two inputs from \code{exposure_i} and determines
-whether \eqn{f_i(z_1)} is equivalent to \eqn{f_i(z_2)} under the null hypothesis. For example, if the
-null is "extent of interference" type of null, we can write
-\code{null_equiv = function(e1, e2) {identical(e1, e2)}}.}
-}
 \code{teststat} specifies the test statistic used in the conditional clique.
 \itemize{
- \item It should contain at least (with order) \code{Y, Z, focal_unit_indicator} as inputs,
-where \code{Y} is the outcome vector, \code{Z} is the treatment vector
+ \item It should contain at least (with order) \code{y, z, focal_unit_indicator} as inputs,
+where \code{y} is the outcome vector, \code{z} is the treatment vector
 and \code{focal_unit_indicator} is a 0-1 vector indicating whether a unit is focal (=1) or not (=0). All three inputs
 should have length equal to number of units and have the same ordering.
  \item Users may use other global variables
 in the function, such as adjacency matrix of the network, but they do not need to be written as parameters
 of the function.
- \item We provide several default test statistics for no-interference null by setting \code{teststat="elc"},
-\code{teststat="score"}. Both statistics require a global variable \code{adjacency.mat}, which is a
-\eqn{N\times N} matrix where \eqn{N} is the number of units, and whose \eqn{i,j} entry is \eqn{1} if and only
-if there is an edge between unit \eqn{i} and unit \eqn{j} in the network. See also \code{T_elc} and \code{T_score}.}
-
-
-\code{controls} contains several components:
-\itemize{
- \item{\code{method}} {Specifies the decomposition method. Should be either \code{"bimax"} or \code{"greedy"}.}
- \item{\code{minr},\code{minc} or \code{mina}} {If \code{"bimax"} is used, \code{minr} and \code{minc}
- should be supplied that specify the minimum number of units and assignments
- in the bicliques found by the algorithm. If \code{"greedy"} is used, \code{mina} should be supplied.}
- \item{\code{num_randomizations}} {Number of randomizations to perform. If it is not specified, will be set
- to be 2000 by default.}
- \item{(optional) \code{Xadj}} {The covariates that might affect Y. If it is specified in \code{controls},
-  will replace \code{Yrealized} by the residuals from the linear regression of \code{Yrealized} on \code{Xadj}
-  (number of rows in \code{Yrealized} and in \code{Xadj} should be the same).
-  Note that users would need to add an intercept to \code{Xadj} manually if they want.}
-}
+ \item We provide several default test statistics for no-interference null that can be generated using
+ function \code{gen_tstat}.}
 }
 \seealso{
-T_elc, T_score
+gen_tstat
 }
