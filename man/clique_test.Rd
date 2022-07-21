@@ -4,19 +4,19 @@
 \alias{clique_test}
 \title{The generalized main randomization test function.}
 \usage{
-clique_test(Yrealized, Zrealized, teststat, alpha = 0.05, biclique_decom)
+clique_test(Y, Z, teststat, biclique_decom, alpha = 0.05)
 }
 \arguments{
-\item{Yrealized}{The observed outcome vector.}
+\item{Y}{The observed outcome vector.}
 
-\item{Zrealized}{A vector that gives the realization of treatment assignment. Its length should match \code{Yrealized}
+\item{Z}{A vector that gives the realization of treatment assignment. Its length should match \code{Y}
 and is the number of units in the experiment.}
 
 \item{teststat}{The test statistic used. See details for further illustration.}
 
-\item{alpha}{The significance level. By default it's \code{0.05}.}
-
 \item{biclique_decom}{Output from \code{biclique.decompose} function that contains a biclique decomposition and controls.}
+
+\item{alpha}{The significance level. By default it's \code{0.05}.}
 }
 \value{
 A list of items summarizing the randomization test. It contains the p-value \code{p.value},

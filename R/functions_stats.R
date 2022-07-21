@@ -99,7 +99,7 @@ gen_tstat = function(G, type) {
     f = function(y, z, is_focal) {
       v1 = t(is_focal*y) %*% G %*% ((1-is_focal)*z) / t(is_focal) %*% G %*% ((1-is_focal)*z)
       v2 = t(is_focal*y) %*% G %*% ((1-is_focal)*(1-z)) / t(is_focal) %*% G %*% ((1-is_focal)*(1-z))
-      v1-v2
+      as.numeric(v1-v2)
     }
   }
   if (type == "score") {
@@ -113,7 +113,7 @@ gen_tstat = function(G, type) {
       ### T_score?
       Icond = as.logical(is_focal*(R>0))
       stopifnot("Not enough units to condition on"=(sum(Icond) > 0))
-      abs( cov(e_r[Icond], Peer_i[Icond]) )
+      as.numeric(abs( cov(e_r[Icond], Peer_i[Icond]) ))
     }
   }
   if (type == "htn") {
@@ -127,7 +127,7 @@ gen_tstat = function(G, type) {
       if ((sd_F>0) & (sd_neighbor_treated_F>0)) {
         Tout = mean( (Y_F-mean(Y_F)) * (neighbor_treated_F-mean(neighbor_treated_F)) ) / (sd_F*sd_neighbor_treated_F)
       }
-      Tout
+      as.numeric(Tout)
     }
   }
   return(f)

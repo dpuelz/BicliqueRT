@@ -1,6 +1,6 @@
 #' Generate a biclique decomposition given null hypothesis.
 #'
-#' @param Zrealized A vector that gives the realization of treatment assignment. Its length should match \code{Yrealized}
+#' @param Z A vector that gives the realization of treatment assignment. Its length should match \code{Y}
 #' and is the number of units in the experiment.
 #' @param hypothesis A list that contains three functions specifyting the experiment design and null hypothesis.
 #' See details for further illustration.
@@ -9,7 +9,7 @@
 #' That is, by default it uses greedy decomposition algorithm with \code{mina=10}, and the number of
 #' randomizations to perform is 2000. See details for further illustration.
 #' @param stop_Zobs Whether to stop when the biclique decomposition finds a biclique that contains the observed
-#' treatment allocation, \code{Zrealized}. Default is \code{FALSE}.
+#' treatment allocation, \code{Z}. Default is \code{FALSE}.
 #'
 #'
 #' @details \code{hypothesis} contains three functions:
@@ -35,8 +35,8 @@
 #'  \item{\code{num_randomizations}} {Number of randomizations to perform. If it is not specified, will be set
 #'  to be 2000 by default.}
 #'  \item{(optional) \code{Xadj}} {The covariates that might affect Y. If it is specified in \code{controls},
-#'   will replace \code{Yrealized} by the residuals from the linear regression of \code{Yrealized} on \code{Xadj}
-#'   (number of rows in \code{Yrealized} and in \code{Xadj} should be the same).
+#'   will replace \code{Y} by the residuals from the linear regression of \code{Y} on \code{Xadj}
+#'   (number of rows in \code{Y} and in \code{Xadj} should be the same).
 #'   Note that users would need to add an intercept to \code{Xadj} manually if they want.}
 #' }
 #'
@@ -45,7 +45,7 @@
 #' graph and contains its focal units and focal assignments.
 #'
 #' @export
-biclique.decompose = function(Zrealized, hypothesis,
+biclique.decompose = function(Z, hypothesis,
                               controls=list(method="greedy", mina=10, num_randomizations=2000), stop_Zobs=F){
 
   # catch functions and controls from hypothesis and controls
@@ -79,16 +79,16 @@ biclique.decompose = function(Zrealized, hypothesis,
   }
 
   # generate randomizations using design_fn & num_randomizations --> Z_m
-  num_units = length(Zrealized)
+  num_units = length(Z)
   Z_m = matrix(0, nrow=num_units, ncol=(num_randomizations+1))
-  Z_m[, 1] = Zrealized
+  Z_m[, 1] = Z
   for (id_rand in 1:num_randomizations){
     Z_m[, id_rand+1] = design_fn()
   }
   Zobs_id = 1
 
   # generate exposure for each unit under different treatment assignment
-  dim_exposure = length(exposure_i(Zrealized, 1)) # get how long the exposure is
+  dim_exposure = length(exposure_i(Z, 1)) # get how long the exposure is
   if (dim_exposure > 1){
     expos = array(0, c(num_units, num_randomizations+1, dim_exposure))
   } else if (dim_exposure == 1){
@@ -220,12 +220,12 @@ biclique.decompose = function(Zrealized, hypothesis,
 
 #' The generalized main randomization test function.
 #'
-#' @param Yrealized The observed outcome vector.
-#' @param Zrealized A vector that gives the realization of treatment assignment. Its length should match \code{Yrealized}
+#' @param Y The observed outcome vector.
+#' @param Z A vector that gives the realization of treatment assignment. Its length should match \code{Y}
 #' and is the number of units in the experiment.
 #' @param teststat The test statistic used. See details for further illustration.
-#' @param alpha The significance level. By default it's \code{0.05}.
 #' @param biclique_decom Output from \code{biclique.decompose} function that contains a biclique decomposition and controls.
+#' @param alpha The significance level. By default it's \code{0.05}.
 #'
 #' @details
 #' \code{teststat} specifies the test statistic used in the conditional clique.
@@ -248,7 +248,7 @@ biclique.decompose = function(Zrealized, hypothesis,
 #' from a multi-null exposure graph and contains its focal units and focal assignments.
 #'
 #' @export
-clique_test = function(Yrealized, Zrealized, teststat, alpha=0.05, biclique_decom){
+clique_test = function(Y, Z, teststat, biclique_decom, alpha=0.05){
 
   # catch test statistic
   stopifnot("teststat should be specified as a function" = is.function(teststat))
@@ -268,17 +268,21 @@ clique_test = function(Yrealized, Zrealized, teststat, alpha=0.05, biclique_deco
   test_stats = rep(0, dim(focal_Zm)[2])
   for (zid in 1:length(test_stats)){
     Z_focal = focal_Zm[, zid]
-    test_stats[zid] = teststat(Yrealized, Z_focal, focal_unit_indicator)
+    test_stats[zid] = teststat(Y, Z_focal, focal_unit_indicator)
   }
   tobs = test_stats[which(colnames(focal_Zm)==Zobs_id)]
   tvals = test_stats[which(colnames(focal_Zm)!=Zobs_id)]
 
-  pval = out_pval(list(tobs=tobs, tvals=tvals), T, alpha) # here we use the previous out_pval function
-
+  if (anyNA(test_stats)) {
+    warning("The test statistic or its randomization distribution contains NA. It may be due to poor
+            selection of focals. Consider rerun the biclique decomposition.")
+  }
   if (sum(abs(tvals-tobs))/length(test_stats) < 1e-14){
     warning("Randomization distribution is degenerate. p.value is not available. Consider changing the test statistic.
             See ... for further discussions.")
   }
+
+  pval = out_pval(list(tobs=tobs, tvals=tvals), T, alpha) # here we use the previous out_pval function
 
   # return
   retlist = list(p.value=pval, statistic=tobs, statistic.dist=tvals, method=method, conditional.clique=focal_clique)

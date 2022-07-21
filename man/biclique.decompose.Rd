@@ -5,14 +5,14 @@
 \title{Generate a biclique decomposition given null hypothesis.}
 \usage{
 biclique.decompose(
-  Zrealized,
+  Z,
   hypothesis,
   controls = list(method = "greedy", mina = 10, num_randomizations = 2000),
   stop_Zobs = F
 )
 }
 \arguments{
-\item{Zrealized}{A vector that gives the realization of treatment assignment. Its length should match \code{Yrealized}
+\item{Z}{A vector that gives the realization of treatment assignment. Its length should match \code{Y}
 and is the number of units in the experiment.}
 
 \item{hypothesis}{A list that contains three functions specifyting the experiment design and null hypothesis.
@@ -24,7 +24,7 @@ That is, by default it uses greedy decomposition algorithm with \code{mina=10}, 
 randomizations to perform is 2000. See details for further illustration.}
 
 \item{stop_Zobs}{Whether to stop when the biclique decomposition finds a biclique that contains the observed
-treatment allocation, \code{Zrealized}. Default is \code{FALSE}.}
+treatment allocation, \code{Z}. Default is \code{FALSE}.}
 }
 \value{
 a list \code{MNE} of clique decomposition and specified \code{controls}.
@@ -58,8 +58,8 @@ null is "extent of interference" type of null, we can write
  \item{\code{num_randomizations}} {Number of randomizations to perform. If it is not specified, will be set
  to be 2000 by default.}
  \item{(optional) \code{Xadj}} {The covariates that might affect Y. If it is specified in \code{controls},
-  will replace \code{Yrealized} by the residuals from the linear regression of \code{Yrealized} on \code{Xadj}
-  (number of rows in \code{Yrealized} and in \code{Xadj} should be the same).
+  will replace \code{Y} by the residuals from the linear regression of \code{Y} on \code{Xadj}
+  (number of rows in \code{Y} and in \code{Xadj} should be the same).
   Note that users would need to add an intercept to \code{Xadj} manually if they want.}
 }
 }
