@@ -79,7 +79,7 @@ radius = 0.02
 design_fn = function() { rbinom(N, 1, prob=0.2) }
 
 #   2. The exposure function: exposure for each unit is (w_i, z_i) where
-# 			w_i = 1{\sum_{j\neq i} g_{ij}^r z_j > 0 } and g_{ij}^r = 1{d(i,j)<r}
+#       w_i = 1{\sum_{j\neq i} g_{ij}^r z_j > 0 } and g_{ij}^r = 1{d(i,j)<r}
 Gr = (D<radius) * 1; diag(Gr) = 0
 exposure_i = function(z, i) { c(as.numeric(sum(Gr[i,]*z) > 0), z[i]) }
 
