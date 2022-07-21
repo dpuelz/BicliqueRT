@@ -3,7 +3,10 @@ R package for randomization tests of causal effects under general interference. 
 
 This is an implementation of the clique-based randomization test developed in the paper [A Graph-Theoretic Approach to Randomization Tests of Causal Effects Under General Interference](https://arxiv.org/pdf/1910.10862.pdf). If used, please cite the paper.
 
+
+
 ## Installation
+
 To use, first install devtools:
 ```R
 install.packages("devtools")
@@ -14,8 +17,41 @@ library(devtools)
 install_github("dpuelz/BicliqueRT")
 ```
 
+
+
+## General Work Flow of the Test
+
+Suppose we are going to test the null: Yi(z)=Yi(z') for all i and all z,z' such that fi(z)~fi(z'), where fi(z) is the exposure of unit i under treatment assignment z, and fi(z)~fi(z') expresses the equivalence of two exposures.
+
+The test consists of two parts as described in the paper: do biclique decomposition on the null exposure graph to find a conditional clique, and do randomization test on the conditional clique.
+
+### 1. Biclique decomposition
+
+The function in this step is `biclique.decompose(Z, hypothesis, controls=list(method="greedy", mina=10, num_randomizations=2000), stop_Zobs=F)`. `Z` is the observed treatment assignment vector of length N where N is the number of units. `hypothesis` is a list that contains three functions specifying the experiment design and null hypothesis: `design_fn`, `exposure_i` and `null_equiv`.
+
+* `design_fn` specifies the experiment design. It should be a function that returns a realization of treatment assignment for the whole sample. It can depends on other global variables such as the number of units. For example, if the design is that each unit has equal probability of 0.2 to receive the treatment independently, we can write `design_fn = function() { rbinom(num_units, 1, prob=0.2) }`. Note that the return of `design_fn()` should also be a vector of length N as `Z` is.
+* `exposure_i` should be a function that returns exposure fi(z) of unit `i` under treatment `z` for the whole sample. The inputs of the function are an index `i` and a vector `z`. For example, if the exposure of `i` under `z` is the treatment it receives, then we can write `exposure_i = function(z, i) { z[i] }`. See examples below for more instances of `exposure_i`.
+* `null_equiv` expresses the equivalence relationship between two exposures. It should be a function that takes two inputs from `exposure_i `and determines whether they are equivalent according to the null hypothesis. See examples below for more instances of `null_equiv`.
+
+The list `controls` specifies parameters for the biclique decomposition algorithm. `method` could be either `"bimax"` or `"greedy"` that uses the two biclique decomposition algorithm. If `"bimax"` is used, `minr` and `minc ` should be supplied that specify the minimum number of units and assignments in the bicliques found by the algorithm. If `"greedy"` is used, `mina ` should be supplied. `num_randomizations` specifies the number of randomizations to perform. Larger the number, more computation time is needed but we may get a larger conditional clique to do randomization which gives the test more power.
+
+`stop_Zobs` is either `TRUE` or `FALSE` that determines whether the biclique decomposition should end when we find a biclique that contains the observed treatment assignment vector. Setting it to `TRUE` can speed up the decomposition a bit but may not get the whole biclique decomposition of the null exposure graph.
+
+The `biclique.decompose` function will return a (partial) biclique decomposition of the null exposure graph where `Z` is in one of them.
+
+### 2. Randomization Test
+
+The output of the `biclique.decompose`, written as `biclique_decom`, should be passed to `clique_test(Y, Z, teststat, biclique_decom, alpha=0.05)` to do the randomization test. Here `Y` is the observed outcome vector of length N, `Z` is the observed treatment assignment vector of same length. `alpha` specifies the significance level.
+
+`teststat` is a function that specifies the test statistic used in the conditional clique. The function should contain at least (with order) `y, z, focal_unit_indicator` as inputs, where `y` is the outcome vector, `z` is the treatment vector and `focal_unit_indicator` is a 0-1 vector indicating whether a unit is focal (=1) or not (=0). All three inputs should have length equal to number of units and have the same ordering. Other global variables can be used in the function, such as the ones about a network of interference.
+
+We provide several default test statistics for no-interference null in [Athey et al. 2018 Exact p-Values for Network Interference](https://www.tandfonline.com/doi/abs/10.1080/01621459.2016.1241178) that can be generated using function `gen_tstat(G, type)`, where `G` is the N by N adjacency matrix of a network, `type` could be one of `"elc","score","htn"`. See section 5 in [Athey et al. 2018](https://www.tandfonline.com/doi/abs/10.1080/01621459.2016.1241178) and the documentation of `gen_tstat` for a detailed description of the these test statistics.
+
+
+
 ## Example: Spatial Interference
-The following simulation example illustrates spatial inference on a small synthetic network with 500 nodes:
+
+The following simulation example illustrates spatial inference on a small synthetic network with 500 nodes. We are testing the null that potential outcomes are the same for all units no matter (it is untreated but within a radius of a treated unit), or (it is untreated but not within a radius of any treated unit).
 
 ```R
 # generated network - 3 clusters of 2D Gaussians
@@ -25,115 +61,128 @@ The following simulation example illustrates spatial inference on a small synthe
 
 library(BicliqueRT)
 set.seed(1)
-thenetwork = out_example_network(500)
+
+N = 500 # number of units
+thenetwork = out_example_network(N)
 D = thenetwork$D
+
+# simulating an outcome vector and a treatment realization
+Y = rnorm(N)
+Z = rbinom(N, 1, prob=0.2)
 
 # simulation parameters
 num_randomizations = 5000
-radius = 0.01
+radius = 0.02
 
-# First, construct Z, Z_a, Z_b.
-# Here, a unit receives exposure a if it is untreated, but within radius of a 
-# treated unit; it receives exposure b if it is untreated and at least radius 
-# distance away from all treated units.
-# Experimental design is Bernoulli with prob=0.2.
-# a_threshold is a scalar denoting the threshold that triggers an exposure to a.  
-# If exposure a is simply binary, i.e. whether or not unit j is exposed to a, then 
-# this value should be set to 1.
-# b_threshold is a scalar denoting the threshold that triggers an exposure to b.  If exposure b
-# is simply binary, i.e. whether or not unit j is exposed to b, then this value should be set to 1.
-Z = out_Z(pi=rep(0.2,dim(D)[1]),num_randomizations)
-D_a = D_b = sparsify((D<radius))
-a_threshold = b_threshold = 1
+# To use the package:
+#		1. The design function: here the experimental design is Bernoulli with prob=0.2
+design_fn = function() { rbinom(N, 1, prob=0.2) }
 
-Z_a = Z_b = D_a%*%Z
-Z_a = sparsify((Z_a>=a_threshold))
-Z_b = sparsify((Z_b<b_threshold))
+# 	2. The exposure function: exposure for each unit is (w_i, z_i) where
+# 			w_i = 1{\sum_{j\neq i} g_{ij}^r z_j > 0 } and g_{ij}^r = 1{d(i,j)<r}
+Gr = (D<radius) * 1; diag(Gr) = 0
+exposure_i = function(z, i) { c(as.numeric(sum(Gr[i,]*z) > 0), z[i]) }
 
-# simulating an outcome vector
-Y = rnorm(dim(Z)[1])
+# 	3. The null
+null_hypothesis = list(c(0,0), c(1,0))
+null_equiv = function(exposure_z1, exposure_z2) {
+  (list(exposure_z1) %in% null_hypothesis) & (list(exposure_z2) %in% null_hypothesis)
+}
 
-# run the test using Bimax to decompose the null-exposure graph
-# tau=0.2 is the tau in the null: Y_i(b) = Y_i(a) + tau for all i.
-CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, tau=0.2, decom='bimax', minr=15, minc=15)
+# Then we can decompose the null exposure graph:
+H0 = list(design_fn=design_fn, exposure_i=exposure_i, null_equiv=null_equiv)
+bd = biclique.decompose(Z, H0, controls= list(method="greedy", mina=20, num_randomizations = 2e3))
+m = bd$MNE # this gives the biclique decomposition
 
-# alternatively, we can use a greedy algorithm to do decomposition by specifying decom
-CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, tau=0.2, decom='greedy', minass=15)
+# To do randomization test, firstly generate a test statistic. Here we use the contrast of mean between units with exposure (0,0) and exposure (1,0)
+Tstat = function(y, z, is_focal) {
+  exposures = rep(0, N)
+  for (unit in 1:N) {
+    exposures[unit] = exposure_i(z, unit)[1]
+  }
+  stopifnot("all focals have same exposures" = (length(unique(exposures[is_focal]))>1) )
+  mean(y[is_focal & (exposures == 1)]) - mean(y[is_focal & (exposures == 0)])
+}
+
+# Then run the test
+testout = clique_test(Y, Z, Tstat, bd)
 ```
-Sometimes we want to replace the outcome vector Y with an adjusted version. We can pass in Xadj and specifying adj_Y=TRUE. Currently we only support adjusting Y by taking the residuals of a linear regression on Xadj, but users can also pre-adjust it before using the clique test function.
-```R
-Xadj = matrix(rnorm(dim(Z)[1]*4), ncol=4)
-CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, Xadj=Xadj, tau=0.2, decom='bimax', minr=15, minc=15, adj_Y=TRUE)
-```
-To get the CI, we can pass in ret_ci=TRUE, and it's not necessary to specify tau in this case:
-```R
-CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, decom='bimax', ret_ci=TRUE, ci_method='grid', minr=15, minc=15)
-```
-By default, we use the "grid" method to calculate CI, we provide another method "bisection". 
-We can also do parallelization for the grid method by specifying Cluster beforehand:
+The output `testout` is a list that contains p-value, the test statistic, the randomization distribution of the test statistic, test method and the conditional clique.
 
 ```R
-library(doParallel)
-numcores = detectCores()
-clst = makeCluster(numcores-1) # try not to use all cores in order not to impose great burden on the computer
-registerDoParallel(clst)
-CRT = clique_test(Y, Z, Z_a, Z_b, Zobs_id=1, decom='bimax', ret_ci=TRUE, ci_method='grid', minr=15, minc=15)
-stopCluster(clst)
+names(testout)
+# [1] "p.value"            "statistic"          "statistic.dist"     "method"             "conditional.clique"
+testout$p.value # p-value of the test
 ```
+
+
 
 ## Example: Clustered Interference
-The following simulation example illustrates clustered inference with 2000 individuals equally divided into 500 clusters:
+
+The following simulation example illustrates clustered inference with 2000 units equally divided into 500 clusters. We assign at random one unit in half of the clusters to be treated, and we are testing that potential outcomes are the same for all units no matter (it is untreated in a cluster without any treated unit), or (it is untreated in a cluster with a treated unit). We follow the same procedure:
 
 ```R
 library(BicliqueRT)
 set.seed(1)
-N = 2000 # total number of individuals
+N = 2000 # total number of units
 K = 500  # total number of households, i.e., number of clusters
-Zobs_id = 1
+housestruct = out_house_structure(N, K, T)
 
-# Generate household-individual structure and experiment design.
-# Each column of Zprime_mat specifies an assignment, and each row represents an individual.
-# Entries of Zprime_mat is either 0, 1, or 2, indicating individual's exposure.
-# Here, an individual has exposure 0 if it's within untreated cluster;
-# it has exposure 1 if it's untreated but someone else in the same cluster is treated;
-# it has exposure 2 if it's treated.
-Zprime_mat = out_Zprime(N, K, numrand=1000)
-Z = Zprime_mat==2    # we convert Z to be a binary matrix indicating whether individual is treated (T) or not (F)
-Z_a = Zprime_mat==1  # controlled individuals in treated households, "spillover"
-Z_b = Zprime_mat==0  # individuals in untreated households, "controlled"
+# The design function:
+design_fn = function(){
+  treatment_list = out_treat_household(housestruct, K1 = K/2) # one unit from half of the households would be treated.
+  treatment = out_Z_household(N, K, treatment_list, housestruct)
+  return(treatment[,'treat'])
+}
 
-# simulate an outcome vector assuming the null is true
-simdat = out_bassefeller(N, K, Zprime_mat[, Zobs_id], tau_main = 0.4)
-Yobs = simdat$Yobs
-```
-This simulate the cluster structure data such that individuals in spillover groups (house i treated and self not treated) are on average 0.4 higher than individuals in pure controlled groups (house i not treated and self not treated).
-```R
-# run the test under the null that tau = 0
-CRT = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, tau=0, decom='bimax', minr=25, minc=25)
-CRT$decision
-# [1] 0
-```
-we get literally 0 p-value, which strongly rejects the null that there is no spillover effect. 
+# Generate a treatment realization and outcome
+Z = design_fn() # randomly get one realization
+Y = out_bassefeller(N, K, Z, tau_main = 0.4, housestruct = housestruct)$Yobs 
+# here we assume that potential outcomes are 0.4 higher if an untreated unit is in a cluster
+# with a treated unit compared to in a cluster without any treated unit, 
+# i.e., a spillover effect of 0.4 is assumed
 
-If we instead specify the null to be that the spillover effect is exactly 0.4 in the test:
-```R
-# run the test under the null that tau = 0.4
-CRT1 = clique_test(Yobs, Z, Z_a, Z_b, Zobs_id, tau=0.4, decom='bimax', minr=25, minc=25)
-CRT1$decision
-# [1] 0.9166667
-```
-or if we change the simulated data such that there is actually on average no difference between the two groups:
-```R
-simdat2 = out_bassefeller(N, K, Zprime_mat[, Zobs_id], tau_main = 0)
-Yobs2 = simdat2$Yobs
-# run the test under the null that tau = 0
-CRT2 = clique_test(Yobs2, Z, Z_a, Z_b, Zobs_id, tau=0, decom='bimax', minr=25, minc=25)
-CRT2$decision
-# [1] 0.5
-```
-we can see that in both cases, we cannot reject the null, as desired.
+# The exposure function: exposure for each unit i is z_i + \sum_{j \in [i]} z_j where [i] represents the cluster i is in.
+exposure_i = function(z, i) {
+  # find the household that i is in
+  house_ind = cumsum(housestruct)
+  which_house_i = which.min(house_ind < i)
+  # find lower and upper index of [i] in z
+  if (which_house_i == 1) {lower_ind = 1} else {lower_ind = house_ind[which_house_i-1] + 1}
+  upper_ind = house_ind[which_house_i]
+  # calculate exposure
+  exposure_z = z[i] + sum(z[lower_ind:upper_ind])
+  exposure_z
+}
 
-## Example: Diagonistic graph
+# The null
+null_equiv = function(exposure_z1, exposure_z2) {
+  ((exposure_z1 == 1) | (exposure_z1 == 0)) & ((exposure_z2 == 1) | (exposure_z2 == 0))
+}
+
+# Do biclique decomposition on the null exposure graph
+H0 = list(design_fn=design_fn, exposure_i=exposure_i, null_equiv=null_equiv)
+bd = biclique.decompose(Z, H0, controls= list(method="greedy", mina=30, num_randomizations = 5e3))
+
+# Define a test statistic, here we use the contrast of mean between units with exposure 1 (untreated in treated cluster) and exposure 0 (untreated in untreated cluster)
+Tstat = function(y, z, is_focal) {
+  exposures = rep(0, N)
+  for (unit in 1:N) {
+    exposures[unit] = exposure_i(z, unit)[1]
+  }
+  stopifnot("all focals have same exposures" = (length(unique(exposures[is_focal]))>1) )
+  mean(y[is_focal & (exposures == 1)]) - mean(y[is_focal & (exposures == 0)])
+}
+
+# Then run the test
+testout = clique_test(Y, Z, Tstat, bd)
+testout$p.value # p-value of the test
+```
+
+
+
+## Example: Diagnostic graph
+
 A common clustered interference problems has the following structure of the experiment design:
 - Each group has a probability of `p_group` to be selected as the treated group
 - Individuals in the treated groups have a probability of `p_indi_t` to be treated, and individuals in the untreated groups have a probability of `p_indi_nt` to be treated
@@ -172,48 +221,55 @@ plot(x = 2:25, y = clique_diag[-1,1], 'l', lty = 1, col = 'red',
      xlab = "num focal units", ylab = "num of focal assin ", ylim = c(0,30)) # total number of focal assignments
 lines(x = 2:25, y = clique_diag[-1,2], 'l', lty = 1, col = 'green') # number of focal assignments that have variations across focal units
 ```
-So if we want the final biclique decomposed from the null exposure graph that contains `Zobs` to have at least 12 focal units, and also each of the biclique's focal assignments does not contain only one type of exposure (so that we can do randomization test on the biclique), it is likely to be very small because on average it contains only 2.45 focal assignments as indicated above. If in the `Bimax` algorithm we set `minr = 12` and, say, `minc = 15`, it would take quite a long time to decompose the null exposure graph. What's worse is that it may never find such a biclique that contains `Zobs`!
+So if we want the final biclique decomposed from the null exposure graph that contains the observed `Z` to have at least 12 focal units, and also each of the biclique's focal assignments does not contain only one type of exposure (so that we can do randomization test on the biclique), it is likely to be very small because on average it contains only 2.45 focal assignments as indicated above. If in the `Bimax` algorithm we set `minr = 12` and, say, `minc = 15`, it would take quite a long time to decompose the null exposure graph. What's worse is that it may never find such a biclique that contains the observed `Z`!
 
-## Example: Extent of Interference
-We demonstrate how to test the "extent of interference" type null hypotheses as in example 3 in the paper. The test allows the individual exposure to be multi-dimensional, and test whether for all individuals, the potential outcome is the same under different treatment assignments that give the same exposure for an individual (eq. 4 in the paper). We illustrate using the example 3 in the paper.
 
-We firstly generate the network
+
+## Example: Extent of interference
+Consider a setting where units are linked in a network. The null we are testing is whether for all units, the potential outcome depends only on treatments of units that are k distant from the unit itself. We illustrate using the case of k=0, which is the null of no interference that a unit's potential outcome depends only on its treatment. 
+
+We firstly generate the network and potential outcomes. We use the Erdos-Renyi model where every possible edge is created with the same constant probability 0.1. We assign exactly half of the units to be treated.
 ```R
+library(BicliqueRT)
+library(igraph)
 set.seed(1)
-N = 30
-D = matrix(sample(c(1:3, Inf), N^2, prob = c(.4, .3, .2, .1), replace = T), N, N)
-D[lower.tri(D)] = t(D)[lower.tri(D)]
-diag(D) = 0
-```
-`D` is a `N` by `N` symmetric matrix where each measures the distance between units `i` and `j` in the network. The distance takes five values 0,1,2,3,Inf where `D[i,i]=0`, and `D[i,j]=Inf` if `i` and `j` are not connected. Smaller the value, closer unit `i` and `j` are.
 
-The treatment assignment mechanism is an individual Bernoulli trial with treated probability being 0.2. 
-```R
-num_randomizations = 1000
-Z = out_Z(pi=rep(0.2, dim(D)[1]), num_randomizations)
+N = 100
+g = erdos.renyi.game(N, 0.1)
+
+Z = sample(c(rep(1, N/2), rep(0, N/2))) # treatment
+A = get.adjacency(g)
+G = as.matrix(A); diag(G) = 0
+
+W = as.numeric(G %*% Z)
+Y = 0.1 + 1*Z  + 5*W+ rnorm(N) # here we have a positive spillover effect from immediate neighbours
 ```
-We set `k=1` that individuals' potential outcomes may depend only on treatments of units up to 1 hops away in the network, but no further.
-```R
-k = 1; Gk = (D <= k)
-exposure = array(0, c(N,num_randomizations,N)) # dim=(|N|, |Z|, dim(f_i(z)))
-Z = as.matrix(Z)
-for (i in 1:N){
- # sweep(Z, 1, Gk[i,], FUN="*") is the exposure for i for all Z, each row is one dimension, that is, (f_i(z1), f_i(z2), f_i(z3),...)
-  exposure[i,,] = t(sweep(Z, 1, Gk[i,], FUN="*"))
+`G` is a `N` by `N` symmetric matrix where `G[i,i]=0`, and `G[i,j]=1` if there's an edge between units `i` and `j` in the network. We then do the same things to decompose the null exposure graph.
+
+~~~R
+# The design function
+design_fn = function() sample(c(rep(1, N/2), rep(0, N/2)))
+
+# The exposure function
+exposure_i = function(z, i){
+  stopifnot(length(z)==N)
+  z[i]
 }
-```
-The `clique_test_ex` is the function we use to test such hypotheses. It works similarly to the `clique_test` function above, but instead of inputing `Z_a` and `Z_b`, we need to input a three-way array `expos` with dimensions being (number of units x number of randomizations x dimension of exposure). Its entry records the exposure `f_i(z)` of units under treatments, where the exposure has more than one dimensions.
 
-We delibrately design outcomes that obviously violate the null hypothesis. Specifically, we set
-```R
-Y = rep(0, N)
-for (i in 1:N){
-  Y[i] = sum((D[i,]>3) * Z[,1])
+# The null
+null_equiv = function(e1, e2){
+  identical(e1, e2)
 }
-```
-That is, an individual's outcome depends on how many individuals not connected to her are treated.
-```R
-test_out = clique_test_ex(Y, Z, exposure, 1, "bimax", minr=5, minc=5)
-# p-value is 0.081, rejected at 0.1 level.
-```
 
+# decompose
+H0 = list(design_fn=design_fn, exposure_i=exposure_i, null_equiv=null_equiv)
+bd = biclique.decompose(Z, H0, controls= list(method="greedy", mina=50, num_randomizations = 2e3))
+~~~
+
+We can use the `gen_tstat` function to generate a test statistic. Here we use the edge-level-contrast statistic. Then we can run the test.
+
+```R
+Tstat = gen_tstat(G, "elc")
+testout = clique_test(Y,Z, Tstat, bd)
+testout$p.value # p-value of the test
+```
