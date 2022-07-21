@@ -75,7 +75,7 @@ num_randomizations = 5000
 radius = 0.02
 
 # To use the package:
-#		1. The design function: here the experimental design is Bernoulli with prob=0.2
+#   1. The design function: here the experimental design is Bernoulli with prob=0.2
 design_fn = function() { rbinom(N, 1, prob=0.2) }
 
 # 	2. The exposure function: exposure for each unit is (w_i, z_i) where
