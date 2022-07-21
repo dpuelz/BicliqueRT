@@ -78,12 +78,12 @@ radius = 0.02
 #   1. The design function: here the experimental design is Bernoulli with prob=0.2
 design_fn = function() { rbinom(N, 1, prob=0.2) }
 
-# 	2. The exposure function: exposure for each unit is (w_i, z_i) where
+#   2. The exposure function: exposure for each unit is (w_i, z_i) where
 # 			w_i = 1{\sum_{j\neq i} g_{ij}^r z_j > 0 } and g_{ij}^r = 1{d(i,j)<r}
 Gr = (D<radius) * 1; diag(Gr) = 0
 exposure_i = function(z, i) { c(as.numeric(sum(Gr[i,]*z) > 0), z[i]) }
 
-# 	3. The null
+#   3. The null
 null_hypothesis = list(c(0,0), c(1,0))
 null_equiv = function(exposure_z1, exposure_z2) {
   (list(exposure_z1) %in% null_hypothesis) & (list(exposure_z2) %in% null_hypothesis)
