@@ -39,6 +39,13 @@ in the function, such as adjacency matrix of the network, but they do not need t
 of the function.
  \item We provide several default test statistics for no-interference null that can be generated using
  function \code{gen_tstat}.}
+
+ Sometimes the test statistic or its randomization distribution contains NA.
+ It may be due to poor selection of focals. In this case the returned \code{p.value} is set to be 3
+ and the user may consider rerun the biclique decomposition.
+ It might also happen that the randomization distribution is degenerate, which means that the resampled
+ test statistics are all identical, and the p-value will not be available in this case. The user
+ may consider changing the test statistic used.
 }
 \seealso{
 gen_tstat

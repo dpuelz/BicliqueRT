@@ -240,6 +240,14 @@ biclique.decompose = function(Z, hypothesis,
 #'  \item We provide several default test statistics for no-interference null that can be generated using
 #'  function \code{gen_tstat}.}
 #'
+#'  Sometimes the test statistic or its randomization distribution contains NA.
+#'  It may be due to poor selection of focals. In this case the returned \code{p.value} is set to be 3
+#'  and the user may consider rerun the biclique decomposition.
+#'  It might also happen that the randomization distribution is degenerate, which means that the resampled
+#'  test statistics are all identical, and the p-value will not be available in this case. The user
+#'  may consider changing the test statistic used.
+#'
+#'
 #' @seealso gen_tstat
 #'
 #' @return A list of items summarizing the randomization test. It contains the p-value \code{p.value},
@@ -276,10 +284,18 @@ clique_test = function(Y, Z, teststat, biclique_decom, alpha=0.05){
   if (anyNA(test_stats)) {
     warning("The test statistic or its randomization distribution contains NA. It may be due to poor
             selection of focals. Consider rerun the biclique decomposition.")
+    pval = 3
+    retlist = list(p.value = pval, statistic = tobs, statistic.dist = tvals,
+                   method = method, conditional.clique = focal_clique)
+    return(retlist)
   }
   if (sum(abs(tvals-tobs))/length(test_stats) < 1e-14){
     warning("Randomization distribution is degenerate. p.value is not available. Consider changing the test statistic.
             See ... for further discussions.")
+    pval = 2
+    retlist = list(p.value = pval, statistic = tobs, statistic.dist = tvals,
+                   method = method, conditional.clique = focal_clique)
+    return(retlist)
   }
 
   pval = out_pval(list(tobs=tobs, tvals=tvals), T, alpha) # here we use the previous out_pval function
