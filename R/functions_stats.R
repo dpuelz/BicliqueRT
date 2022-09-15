@@ -112,7 +112,7 @@ gen_tstat = function(G, type) {
       e_r = fit0$residuals
       ### T_score?
       Icond = as.logical(is_focal*(R>0))
-      stopifnot("Not enough units to condition on"=(sum(Icond) > 0))
+      if (!(sum(Icond) > 0)) { return(NaN) }
       as.numeric(abs( cov(e_r[Icond], Peer_i[Icond]) ))
     }
   }
