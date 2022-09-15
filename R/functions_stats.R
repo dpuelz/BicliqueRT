@@ -118,6 +118,7 @@ gen_tstat = function(G, type) {
   }
   if (type == "htn") {
     f = function(y, z, is_focal){
+      if (sum(is_focal) == 1) { return(NaN) }
       Y_F = y[is_focal]
       sd_F = sd(Y_F)
       neighbor_treated = G %*% (z*(!is_focal)) > 0
