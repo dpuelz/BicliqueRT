@@ -177,17 +177,17 @@ biclique.decompose = function(Z, hypothesis,
       num_ass = mina
       break_signal = FALSE
 
-      ### should not remove isolated units here, otherwise rownames of multiNEgraph is distorted,
-      ### then get_clique function will go wrong when matching rownames.
-      ### --- has been fixed
-      iremove = which(rowSums(multiNEgraph!=0)==0)  # removes isolated units.
-      if(length(iremove)!=0){ multiNEgraph = multiNEgraph[-iremove,] }
-
       if (dim(multiNEgraph)[2]<=num_ass){ # when remaining cols below threshold mina
-        units_leftover = which(rowSums(multiNEgraph^2)==dim(multiNEgraph^2)[2])
-        themat = multiNEgraph[units_leftover,]
+        units_leftover = which(rowSums(multiNEgraph)==dim(multiNEgraph)[2])
+        themat = multiNEgraph[units_leftover,, drop=F]
         break_signal = TRUE
       } else {
+        ### should not remove isolated units here, otherwise rownames of multiNEgraph is distorted,
+        ### then get_clique function will go wrong when matching rownames.
+        ### --- has been fixed
+        iremove = which(rowSums(multiNEgraph!=0)==0)  # removes isolated units.
+        if(length(iremove)!=0){ multiNEgraph = multiNEgraph[-iremove,] }
+        
         test = out_greedy_decom(multiNEgraph, num_ass)
         themat = test$clique
       }
