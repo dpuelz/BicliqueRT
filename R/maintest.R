@@ -151,7 +151,7 @@ biclique.decompose = function(Z, hypothesis,
       focal_unit = as.integer(rownames(themat))
       focal_ass = as.integer(colnames(themat)); focal_ass_match = Z0[focal_ass]
 
-      Z_m_assignments = Z_m[,focal_ass_match]
+      Z_m_assignments = Z_m[,focal_ass_match, drop=F]
       if (length(focal_ass_match) == 1) {Z_m_assignments = as.matrix(Z_m_assignments)} # N' x 1 clique
       rownames(Z_m_assignments) = 1:num_units
       colnames(Z_m_assignments) = focal_ass_match
@@ -199,7 +199,7 @@ biclique.decompose = function(Z, hypothesis,
         next
       }
 
-      Z_m_assignments = Z_m[,focal_ass_match]
+      Z_m_assignments = Z_m[,focal_ass_match, drop=F]
       rownames(Z_m_assignments) = 1:num_units
       colnames(Z_m_assignments) = focal_ass_match
       MNE = append(MNE, list(list(units = focal_unit, assignments = Z_m_assignments)))
