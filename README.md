@@ -135,13 +135,6 @@ design_fn = function(){
   return(treatment[,'treat'])
 }
 
-# Generate a treatment realization and outcome
-Z = design_fn() # randomly get one realization
-Y = out_bassefeller(N, K, Z, tau_main = 0.4, housestruct = housestruct)$Yobs 
-# here we assume that potential outcomes are 0.4 higher if an untreated unit is in a cluster
-# with a treated unit compared to in a cluster without any treated unit, 
-# i.e., a spillover effect of 0.4 is assumed
-
 # The exposure function: exposure for each unit i is z_i + \sum_{j \in [i]} z_j where [i] represents the cluster i is in.
 exposure_i = function(z, i) {
   # find the household that i is in
@@ -159,6 +152,16 @@ exposure_i = function(z, i) {
 null_equiv = function(exposure_z1, exposure_z2) {
   ((exposure_z1 == 1) | (exposure_z1 == 0)) & ((exposure_z2 == 1) | (exposure_z2 == 0))
 }
+
+# Generate a treatment realization and outcome
+Z = design_fn() # randomly get one realization
+# Generate exposure under the realized Z
+Z_exposure = rep(0, N); for (i in 1:N) { Z_exposure[i] = exposure_i(Z, i) }
+# Generate observed outcomes based on exposures under Z
+Y = out_bassefeller(N, K, Z_exposure, tau_main = 0.4, housestruct = housestruct)$Yobs 
+# here we assume that potential outcomes are 0.4 higher if an untreated unit is in a cluster
+# with a treated unit compared to in a cluster without any treated unit, 
+# i.e., a spillover effect of 0.4 is assumed
 
 # Do biclique decomposition on the null exposure graph
 H0 = list(design_fn=design_fn, exposure_i=exposure_i, null_equiv=null_equiv)
