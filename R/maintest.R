@@ -151,7 +151,7 @@ biclique.decompose = function(Z, hypothesis,
       focal_unit = as.integer(rownames(themat))
       focal_ass = as.integer(colnames(themat)); focal_ass_match = Z0[focal_ass]
 
-      Z_m_assignments = Z_m[,focal_ass_match]
+      Z_m_assignments = Z_m[,focal_ass_match, drop=F]
       if (length(focal_ass_match) == 1) {Z_m_assignments = as.matrix(Z_m_assignments)} # N' x 1 clique
       rownames(Z_m_assignments) = 1:num_units
       colnames(Z_m_assignments) = focal_ass_match
@@ -177,17 +177,17 @@ biclique.decompose = function(Z, hypothesis,
       num_ass = mina
       break_signal = FALSE
 
-      ### should not remove isolated units here, otherwise rownames of multiNEgraph is distorted,
-      ### then get_clique function will go wrong when matching rownames.
-      ### --- has been fixed
-      iremove = which(rowSums(multiNEgraph!=0)==0)  # removes isolated units.
-      if(length(iremove)!=0){ multiNEgraph = multiNEgraph[-iremove,] }
-
       if (dim(multiNEgraph)[2]<=num_ass){ # when remaining cols below threshold mina
-        units_leftover = which(rowSums(multiNEgraph^2)==dim(multiNEgraph^2)[2])
-        themat = multiNEgraph[units_leftover,]
+        units_leftover = which(rowSums(multiNEgraph)==dim(multiNEgraph)[2])
+        themat = multiNEgraph[units_leftover,, drop=F]
         break_signal = TRUE
       } else {
+        ### should not remove isolated units here, otherwise rownames of multiNEgraph is distorted,
+        ### then get_clique function will go wrong when matching rownames.
+        ### --- has been fixed
+        iremove = which(rowSums(multiNEgraph!=0)==0)  # removes isolated units.
+        if(length(iremove)!=0){ multiNEgraph = multiNEgraph[-iremove,] }
+        
         test = out_greedy_decom(multiNEgraph, num_ass)
         themat = test$clique
       }
@@ -199,7 +199,7 @@ biclique.decompose = function(Z, hypothesis,
         next
       }
 
-      Z_m_assignments = Z_m[,focal_ass_match]
+      Z_m_assignments = Z_m[,focal_ass_match, drop=F]
       rownames(Z_m_assignments) = 1:num_units
       colnames(Z_m_assignments) = focal_ass_match
       MNE = append(MNE, list(list(units = focal_unit, assignments = Z_m_assignments)))
