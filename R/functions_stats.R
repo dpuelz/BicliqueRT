@@ -1,69 +1,41 @@
 #' One-sided testing
 #'
-#' Decides to reject or not based on observed test statistic value \code{tobs} and randomization values \code{tvals}.
+#' Compute p-value of the one-sided test given observed test statistic \code{tobs}
+#' and randomized \code{tvals}.
 #'
 #' @param tobs The observed value of the test statistic (scalar).
-#' @param tvals Vector of randomization values of the test statistic (to compare with \code{tobs}).
-#' @param alpha Desired level of the test (between 0 to 1).
-#' @param tol Used to check whether \code{tobs} is equal to the 1-\code{alpha} quantile of \code{tvals}.
-#' If the observed \code{tobs} is within \code{tol} of any of \code{tvals}, they
-#' will be treated as equal.
-#' @details
-#' The test may randomize to achieve the specified level \code{alpha}
-#' when there are very few randomization values. Returns 1 if the test rejects, 0 otherwise.
+#' @param tvals A vector of randomization values of the test statistic (to compare with \code{tobs}).
 #'
-#' Note that if the \eqn{1-\alpha} percentile of \code{tvals} is the same as
-#' \code{tobs} (up to \code{tol}), it will return a randomized decison.
-#' @return Test decision (binary). Returns 1 if the test rejects, 0 otherwise.
-#' @examples
-#' tvals <- seq(0.1, 1, length.out=10)
-#' tobs <- 0.85
-#' > one_sided_test(tobs, tvals, 0.1)
-#' [1] 0
+#' @details The test may randomize the p-value depending on how many \code{tvals}
+#'  are the same as \code{tobs} (up to a tolerance level) to get better performance.
+#'
+#' @return p-value for one-sided testing.
 #' @seealso Testing Statistical Hypotheses (Ch. 15, Lehman and Romano, 2006)
 #' @export
-one_sided_test = function(tobs, tvals, alpha, tol=1e-14) {
-  srt = sort(tvals)
-  M = length(tvals)
-  k = ceiling(M * (1-alpha))
-  Tk = srt[k]
-  if(abs(tobs - Tk) < tol) {
-    # if tobs = Tk
-    ax = (M * alpha - sum(tvals > Tk)) / sum(abs(tvals - Tk) < tol)
-    return(1*(runif(1) <= ax)) ## randomize decision.
-  }
-
-  return(1*(tobs > Tk))
+one_sided_test = function(tobs, tvals, tol=1e-14) {
+  M = sum(abs(tvals-tobs)<tol)
+  p_val = (sum(tvals>tobs) + runif(1)*(1+M)) / (length(tvals) + 1)
+  p_val
 }
 
 
 #' Two-sided testing
 #'
-#' Decides to reject or not based on observed test statistic value \code{tobs}
-#' and randomization values \code{tvals}. The test may randomize to achieve the specified level \code{alpha}
-#' when there are very few randomization values.
+#' Compute p-value of the two-sided test given observed test statistic \code{tobs}
+#' and randomized \code{tvals}.
 #'
-#' @param tobs The observed value of the test statistic (scalar).
-#' @param tvals Vector of randomization values of the test statistic (to compare with \code{tobs}).
-#' @param alpha Desired level of the test (between 0 to 1).
-#' @param tol Used to check whether \code{tobs} is equal to the 1-\code{alpha}/2
-#' or \code{alpha}/2 quantile of \code{tvals}.
-#' If the observed \code{tobs} is within \code{tol} of any of \code{tvals}, they
-#' will be treated as equal.
+#' @inheritParams one_sided_test
 #'
-#' @examples
-#' tvals <- seq(0, 1, length.out=1001)
-#' tobs <- 0.95 + 1e-13
-#' > two_sided_test(tobs, tvals, 0.1)
-#' [1] 1
+#' @details The test may randomize the p-value depending on how many \code{tvals}
+#'  are the same as \code{tobs} (up to a tolerance level) to get better performance.
 #'
-#' @return Test decision (binary). Returns 1 if the test rejects, 0 otherwise.
+#' @return p-value for two-sided testing.
 #' @seealso Testing Statistical Hypotheses (Ch. 15, Lehman and Romano, 2006)
 #' @export
-two_sided_test = function(tobs, tvals, alpha, tol=1e-14) {
-  m1 = one_sided_test(tobs, tvals, alpha=alpha/2, tol=tol)
-  m2 = one_sided_test(-tobs, -tvals, alpha=alpha/2, tol=tol) # only one can be 1.
-  return(m1 + m2)
+two_sided_test = function(tobs, tvals, tol=1e-14) {
+  p_val_onesided = one_sided_test(tobs, tvals)
+  p_val = 2 * min(p_val_onesided, 1-p_val_onesided)
+  p_val
 }
 
 

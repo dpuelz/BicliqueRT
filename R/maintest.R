@@ -187,7 +187,7 @@ biclique.decompose = function(Z, hypothesis,
         ### --- has been fixed
         iremove = which(rowSums(multiNEgraph!=0)==0)  # removes isolated units.
         if(length(iremove)!=0){ multiNEgraph = multiNEgraph[-iremove,] }
-        
+
         test = out_greedy_decom(multiNEgraph, num_ass)
         themat = test$clique
       }
@@ -226,6 +226,7 @@ biclique.decompose = function(Z, hypothesis,
 #' @param teststat The test statistic used. See details for further illustration.
 #' @param biclique_decom Output from \code{biclique.decompose} function that contains a biclique decomposition and controls.
 #' @param alpha The significance level. By default it's \code{0.05}.
+#' @param two_sided Logical, whether to use a two-sided test. Default is \code{TRUE}.
 #'
 #' @details
 #' \code{teststat} specifies the test statistic used in the conditional clique.
@@ -257,7 +258,7 @@ biclique.decompose = function(Z, hypothesis,
 #' from a multi-null exposure graph and contains its focal units and focal assignments.
 #'
 #' @export
-clique_test = function(Y, Z, teststat, biclique_decom, alpha=0.05){
+clique_test = function(Y, Z, teststat, biclique_decom, alpha=0.05, two_sided=T){
 
   # catch test statistic
   stopifnot("teststat should be specified as a function" = is.function(teststat))
@@ -299,7 +300,13 @@ clique_test = function(Y, Z, teststat, biclique_decom, alpha=0.05){
     return(retlist)
   }
 
-  pval = out_pval(list(tobs=tobs, tvals=tvals), T, alpha) # here we use the previous out_pval function
+  # calculate p-value
+  stopifnot("two_sided should be either TRUE or FALSE" = is.logical(two_sided))
+  if (two_sided) {
+    pval = two_sided_test(tobs, tvals)
+  } else {
+    pval = one_sided_test(tobs, tvals)
+  }
 
   # return
   retlist = list(p.value=pval, statistic=tobs, statistic.dist=tvals, method=method, conditional.clique=focal_clique)

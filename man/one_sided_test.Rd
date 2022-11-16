@@ -4,37 +4,23 @@
 \alias{one_sided_test}
 \title{One-sided testing}
 \usage{
-one_sided_test(tobs, tvals, alpha, tol = 1e-14)
+one_sided_test(tobs, tvals, tol = 1e-14)
 }
 \arguments{
 \item{tobs}{The observed value of the test statistic (scalar).}
 
-\item{tvals}{Vector of randomization values of the test statistic (to compare with \code{tobs}).}
-
-\item{alpha}{Desired level of the test (between 0 to 1).}
-
-\item{tol}{Used to check whether \code{tobs} is equal to the 1-\code{alpha} quantile of \code{tvals}.
-If the observed \code{tobs} is within \code{tol} of any of \code{tvals}, they
-will be treated as equal.}
+\item{tvals}{A vector of randomization values of the test statistic (to compare with \code{tobs}).}
 }
 \value{
-Test decision (binary). Returns 1 if the test rejects, 0 otherwise.
+p-value for one-sided testing.
 }
 \description{
-Decides to reject or not based on observed test statistic value \code{tobs} and randomization values \code{tvals}.
+Compute p-value of the one-sided test given observed test statistic \code{tobs}
+and randomized \code{tvals}.
 }
 \details{
-The test may randomize to achieve the specified level \code{alpha}
-when there are very few randomization values. Returns 1 if the test rejects, 0 otherwise.
-
-Note that if the \eqn{1-\alpha} percentile of \code{tvals} is the same as
-\code{tobs} (up to \code{tol}), it will return a randomized decison.
-}
-\examples{
-tvals <- seq(0.1, 1, length.out=10)
-tobs <- 0.85
-> one_sided_test(tobs, tvals, 0.1)
-[1] 0
+The test may randomize the p-value depending on how many \code{tvals}
+ are the same as \code{tobs} (up to a tolerance level) to get better performance.
 }
 \seealso{
 Testing Statistical Hypotheses (Ch. 15, Lehman and Romano, 2006)
