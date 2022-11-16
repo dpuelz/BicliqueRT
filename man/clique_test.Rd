@@ -4,7 +4,7 @@
 \alias{clique_test}
 \title{The generalized main randomization test function.}
 \usage{
-clique_test(Y, Z, teststat, biclique_decom, alpha = 0.05)
+clique_test(Y, Z, teststat, biclique_decom, alpha = 0.05, two_sided = T)
 }
 \arguments{
 \item{Y}{The observed outcome vector.}
@@ -17,6 +17,8 @@ and is the number of units in the experiment.}
 \item{biclique_decom}{Output from \code{biclique.decompose} function that contains a biclique decomposition and controls.}
 
 \item{alpha}{The significance level. By default it's \code{0.05}.}
+
+\item{two_sided}{Logical, whether to use a two-sided test. Default is \code{TRUE}.}
 }
 \value{
 A list of items summarizing the randomization test. It contains the p-value \code{p.value},
