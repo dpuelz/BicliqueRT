@@ -41,11 +41,13 @@ The `biclique.decompose` function will return a (partial) biclique decomposition
 
 ### 2. Randomization Test
 
-The output of the `biclique.decompose`, written as `biclique_decom`, should be passed to `clique_test(Y, Z, teststat, biclique_decom, alpha=0.05)` to do the randomization test. Here `Y` is the observed outcome vector of length N, `Z` is the observed treatment assignment vector of same length. `alpha` specifies the significance level.
+The output of the `biclique.decompose`, written as `biclique_decom`, should be passed to `clique_test(Y, Z, teststat, biclique_decom, alpha=0.05, one_sided=T)` to do the randomization test. Here `Y` is the observed outcome vector of length N, `Z` is the observed treatment assignment vector of same length. `alpha` specifies the significance level.
 
 `teststat` is a function that specifies the test statistic used in the conditional clique. The function should contain at least (with order) `y, z, focal_unit_indicator` as inputs, where `y` is the outcome vector, `z` is the treatment vector and `focal_unit_indicator` is a 0-1 vector indicating whether a unit is focal (=1) or not (=0). All three inputs should have length equal to number of units and have the same ordering. Other global variables can be used in the function, such as the ones about a network of interference.
 
 We provide several default test statistics for no-interference null in [Athey et al. 2018 Exact p-Values for Network Interference](https://www.tandfonline.com/doi/abs/10.1080/01621459.2016.1241178) that can be generated using function `gen_tstat(G, type)`, where `G` is the N by N adjacency matrix of a network, `type` could be one of `"elc","score","htn"`. See section 5 in [Athey et al. 2018](https://www.tandfonline.com/doi/abs/10.1080/01621459.2016.1241178) and the documentation of `gen_tstat` for a detailed description of the these test statistics.
+
+Note that by default (`one_sided=T`), we calculate p-value by a one-sided p-value as in the function `one_sided_test`. This requires that the test statistic is defined in a way such that a large value of the test statistic provides evidence against the null hypothesis. Note that using the one-sided p-value does not necessarily restrict it to be a one-sided test. For example if we want to test that the means in two groups are the same (H0) vs not the same (H1), we can take the test statistic to be the absolute value of differences in means between the two groups and use the one-sided p-value. Now a large test statistic indicates rejection. However, the user can choose other statistics that do not necessarily satisfy this requirement and use the two-sided p-value by setting \code{one_sided=F}, which calculates the p-value by \code{two_sided_test}.
 
 
 
@@ -94,7 +96,7 @@ H0 = list(design_fn=design_fn, exposure_i=exposure_i, null_equiv=null_equiv)
 bd = biclique.decompose(Z, H0, controls= list(method="greedy", mina=20, num_randomizations = 2e3))
 m = bd$MNE # this gives the biclique decomposition
 
-# To do randomization test, firstly generate a test statistic. Here we use the absolute differences in mean between units with exposure (0,0) and exposure (1,0)
+# To do randomization test, firstly generate a test statistic. Here we use the absolute value of differences in means between units with exposure (0,0) and exposure (1,0)
 Tstat = function(y, z, is_focal) {
   exposures = rep(0, N)
   for (unit in 1:N) {
@@ -167,7 +169,7 @@ Y = out_bassefeller(N, K, Z_exposure, tau_main = 0.4, housestruct = housestruct)
 H0 = list(design_fn=design_fn, exposure_i=exposure_i, null_equiv=null_equiv)
 bd = biclique.decompose(Z, H0, controls= list(method="greedy", mina=30, num_randomizations = 5e3))
 
-# Define a test statistic, here we use the absolute differences in mean between units with exposure 1 (untreated in treated cluster) and exposure 0 (untreated in untreated cluster)
+# Define a test statistic, here we use the absolute value of differences in means between units with exposure 1 (untreated in treated cluster) and exposure 0 (untreated in untreated cluster)
 Tstat = function(y, z, is_focal) {
   exposures = rep(0, N)
   for (unit in 1:N) {
