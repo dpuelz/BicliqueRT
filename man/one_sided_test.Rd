@@ -15,7 +15,7 @@ one_sided_test(tobs, tvals, tol = 1e-14)
 p-value for one-sided testing.
 }
 \description{
-Compute p-value of the one-sided test given observed test statistic \code{tobs}
+Compute a one-sided p-value given observed test statistic \code{tobs}
 and randomized \code{tvals}.
 }
 \details{

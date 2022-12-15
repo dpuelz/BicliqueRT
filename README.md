@@ -94,14 +94,14 @@ H0 = list(design_fn=design_fn, exposure_i=exposure_i, null_equiv=null_equiv)
 bd = biclique.decompose(Z, H0, controls= list(method="greedy", mina=20, num_randomizations = 2e3))
 m = bd$MNE # this gives the biclique decomposition
 
-# To do randomization test, firstly generate a test statistic. Here we use the contrast of mean between units with exposure (0,0) and exposure (1,0)
+# To do randomization test, firstly generate a test statistic. Here we use the absolute differences in mean between units with exposure (0,0) and exposure (1,0)
 Tstat = function(y, z, is_focal) {
   exposures = rep(0, N)
   for (unit in 1:N) {
     exposures[unit] = exposure_i(z, unit)[1]
   }
   stopifnot("all focals have same exposures" = (length(unique(exposures[is_focal]))>1) )
-  mean(y[is_focal & (exposures == 1)]) - mean(y[is_focal & (exposures == 0)])
+  abs(mean(y[is_focal & (exposures == 1)]) - mean(y[is_focal & (exposures == 0)]))
 }
 
 # Then run the test
@@ -167,14 +167,14 @@ Y = out_bassefeller(N, K, Z_exposure, tau_main = 0.4, housestruct = housestruct)
 H0 = list(design_fn=design_fn, exposure_i=exposure_i, null_equiv=null_equiv)
 bd = biclique.decompose(Z, H0, controls= list(method="greedy", mina=30, num_randomizations = 5e3))
 
-# Define a test statistic, here we use the contrast of mean between units with exposure 1 (untreated in treated cluster) and exposure 0 (untreated in untreated cluster)
+# Define a test statistic, here we use the absolute differences in mean between units with exposure 1 (untreated in treated cluster) and exposure 0 (untreated in untreated cluster)
 Tstat = function(y, z, is_focal) {
   exposures = rep(0, N)
   for (unit in 1:N) {
     exposures[unit] = exposure_i(z, unit)[1]
   }
   stopifnot("all focals have same exposures" = (length(unique(exposures[is_focal]))>1) )
-  mean(y[is_focal & (exposures == 1)]) - mean(y[is_focal & (exposures == 0)])
+  abs(mean(y[is_focal & (exposures == 1)]) - mean(y[is_focal & (exposures == 0)]))
 }
 
 # Then run the test

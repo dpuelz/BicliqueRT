@@ -1,6 +1,6 @@
 #' One-sided testing
 #'
-#' Compute p-value of the one-sided test given observed test statistic \code{tobs}
+#' Compute a one-sided p-value given observed test statistic \code{tobs}
 #' and randomized \code{tvals}.
 #'
 #' @param tobs The observed value of the test statistic (scalar).
@@ -21,7 +21,7 @@ one_sided_test = function(tobs, tvals, tol=1e-14) {
 
 #' Two-sided testing
 #'
-#' Compute p-value of the two-sided test given observed test statistic \code{tobs}
+#' Compute a two-sided p-value given observed test statistic \code{tobs}
 #' and randomized \code{tvals}.
 #'
 #' @inheritParams one_sided_test
@@ -71,7 +71,7 @@ gen_tstat = function(G, type) {
     f = function(y, z, is_focal) {
       v1 = t(is_focal*y) %*% G %*% ((1-is_focal)*z) / t(is_focal) %*% G %*% ((1-is_focal)*z)
       v2 = t(is_focal*y) %*% G %*% ((1-is_focal)*(1-z)) / t(is_focal) %*% G %*% ((1-is_focal)*(1-z))
-      as.numeric(v1-v2)
+      as.numeric(abs(v1-v2))
     }
   }
   if (type == "score") {
@@ -100,7 +100,7 @@ gen_tstat = function(G, type) {
       if ((sd_F>0) & (sd_neighbor_treated_F>0)) {
         Tout = mean( (Y_F-mean(Y_F)) * (neighbor_treated_F-mean(neighbor_treated_F)) ) / (sd_F*sd_neighbor_treated_F)
       }
-      as.numeric(Tout)
+      as.numeric(abs(Tout))
     }
   }
   return(f)
