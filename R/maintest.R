@@ -226,11 +226,16 @@ biclique.decompose = function(Z, hypothesis,
 #' @param teststat The test statistic used. See details for further illustration.
 #' @param biclique_decom Output from \code{biclique.decompose} function that contains a biclique decomposition and controls.
 #' @param alpha The significance level. By default it's \code{0.05}.
-#' @param two_sided Logical, whether to use a two-sided test. Default is \code{TRUE}.
+#' @param one_sided Logical, whether to use a one-sided p-value or a two-sided p-value.
+#' Default is \code{TRUE} which uses a one-sided p-value. See details for further illustration.
 #'
 #' @details
 #' \code{teststat} specifies the test statistic used in the conditional clique.
 #' \itemize{
+#'  \item By default, \code{one_sided} is set to be \code{TRUE}, which calculates the p-value by the function
+#' \code{one_sided_test}. It hence requires that a large value of the test statistic provides evidence against
+#' the null hypothesis. However, the user can choose other statistics and use the two-sided p-value by
+#' setting \code{one_sided=F}, which calculates the p-value by \code{two_sided_test}.
 #'  \item It should contain at least (with order) \code{y, z, focal_unit_indicator} as inputs,
 #' where \code{y} is the outcome vector, \code{z} is the treatment vector
 #' and \code{focal_unit_indicator} is a 0-1 vector indicating whether a unit is focal (=1) or not (=0). All three inputs
@@ -250,7 +255,8 @@ biclique.decompose = function(Z, hypothesis,
 #'  the returned \code{p.value} is set to be 2 and the user may consider changing the test statistic used.
 #'
 #'
-#' @seealso gen_tstat
+#'
+#' @seealso gen_tstat, one_sided_test
 #'
 #' @return A list of items summarizing the randomization test. It contains the p-value \code{p.value},
 #' test statistic \code{statistic}, the randomization distribution of the test statistic \code{statistic.dist},
@@ -258,7 +264,7 @@ biclique.decompose = function(Z, hypothesis,
 #' from a multi-null exposure graph and contains its focal units and focal assignments.
 #'
 #' @export
-clique_test = function(Y, Z, teststat, biclique_decom, alpha=0.05, two_sided=T){
+clique_test = function(Y, Z, teststat, biclique_decom, alpha=0.05, one_sided=T){
 
   # catch test statistic
   stopifnot("teststat should be specified as a function" = is.function(teststat))
@@ -301,11 +307,11 @@ clique_test = function(Y, Z, teststat, biclique_decom, alpha=0.05, two_sided=T){
   }
 
   # calculate p-value
-  stopifnot("two_sided should be either TRUE or FALSE" = is.logical(two_sided))
-  if (two_sided) {
-    pval = two_sided_test(tobs, tvals)
-  } else {
+  stopifnot("one_sided should be either TRUE or FALSE" = is.logical(one_sided))
+  if (one_sided) {
     pval = one_sided_test(tobs, tvals)
+  } else {
+    pval = two_sided_test(tobs, tvals)
   }
 
   # return
