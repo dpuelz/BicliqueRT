@@ -29,12 +29,13 @@ out_NEgraph_multi = function(Zsub, Z0, Z, num_units, exposure_fn){
 
 #' Generate multi-null exposure graph using null_equiv.
 #'
-#' @inheritParams clique_test
 #' @param Zsub An integer from \code{1:length(Z0)} that represents a sample from \code{Z0}.
 #' @param Z0 A vector of column index that represents the remaining treatment.
 #' Please see Sec. 8 of the paper for more details.
 #' @param expos A three-way array with dimensions (number of units x number of randomizations x dimension of exposure).
 #' Its entry records the exposure \code{f_i(z)} of units under treatments, where the exposure has more than one dimensions.
+#' @param null_equiv A function that determines whether two exposure values are equivalent under the null hypothesis.
+#' @param dim_exposure The dimension of the exposure vector.
 #'
 #' @return A matrix of dimension (\code{num_units} x \code{length(Z0)}) which is the multi-null exposure graph
 #' with respect to \code{Z0[Zsub]} and \code{Z0}.
@@ -156,14 +157,14 @@ out_clique_decomposition_bimax = function(NEgraph,Zobs_id,minr,minc,stop_at_Zobs
 
   while(numleft>0){
     minc.new = min(minc,numleft)
-    bitest = biclust(new.NEgraph, method=BCBimax(), minr, minc.new, number=numb)
-    bicliqMat = bicluster(new.NEgraph,bitest)
+    bitest = bimax_biclust(new.NEgraph, minr, minc.new, number = numb)
+    bicliqMat = bimax_extract(new.NEgraph, bitest)
     themat = bicliqMat$Bicluster1
     while(length(themat)==0){   ### if current minc gives no biclique decomposition, try a smaller one.
       numleft=numleft-1
       minc.new = min(minc,numleft)
-      bitest = biclust(new.NEgraph!=0, method=BCBimax(), minr, minc.new, number=numb)
-      bicliqMat = bicluster(new.NEgraph,bitest)
+      bitest = bimax_biclust(new.NEgraph!=0, minr, minc.new, number = numb)
+      bicliqMat = bimax_extract(new.NEgraph, bitest)
       themat = bicliqMat$Bicluster1
     }
     dropnames = colnames(themat)
@@ -172,7 +173,7 @@ out_clique_decomposition_bimax = function(NEgraph,Zobs_id,minr,minc,stop_at_Zobs
 
     if(stop_at_Zobs){
       if(sum(dropnames==Zobs_id)==1){
-        themat.Zobs.s = themat; cat("\r","found clique with Zobs!")
+        themat.Zobs.s = themat; message("found clique with Zobs!")
         return(themat.Zobs.s)
       }
     }
@@ -180,7 +181,7 @@ out_clique_decomposition_bimax = function(NEgraph,Zobs_id,minr,minc,stop_at_Zobs
     numleft = dim(new.NEgraph)[2]
     if(length(numleft)==0){ numleft=0 }
     decomp[[ii]] = themat
-    cat("\r","found clique",ii,'...')
+    message("found clique ", ii, " ...")
     ii=ii+1
   }
   return(decomp)
@@ -293,7 +294,7 @@ out_clique_decomposition_greedy = function(NEgraph, Zobs_id, num_ass, stop_at_Zo
     if(!stop_at_Zobs){  }
     iass_remove = match(focalass,colnames(NEgraph))
     NEgraph = NEgraph[,-iass_remove]
-    cat('\r','found greedy clique',cc,'...')
+    message("found greedy clique ", cc, " ...")
     allcliques[[cc]] = clique
     if(dim(NEgraph)[2]<=num_ass){ # when remaining cols not enough to do the greedy algo.
       units_leftover = which(rowSums(NEgraph^2)==dim(NEgraph^2)[2])

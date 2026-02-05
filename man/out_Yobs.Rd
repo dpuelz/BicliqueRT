@@ -22,13 +22,11 @@ A single observed outcome vector.
 Computes the observed outcome vector, given potential outcomes on the exposures
 }
 \examples{
-Za <- c(1,1,0)
-Zb <- c(0,0,1)
-# Za and Zb tells us that the first and second individual are exposed to \code{a},
-# while the third individual is exposed to \code{b}.
-Ya <- rep(0,3)
+Za <- c(1, 1, 0)
+Zb <- c(0, 0, 1)
+# Units 1,2 exposed to a; unit 3 exposed to b
+Ya <- rep(0, 3)
 Yb <- Ya + 1
-# Ya and Yb tells us that all individuals have potential outcome 0 if exposed to \code{a}, 1 if exposed to \code{b}
-out_Yobs(Za, Zb, Ya, Yb) # this is what we observed in this trial.
-[1] 0 0 1
+# Potential outcome 0 under a, 1 under b
+out_Yobs(Za, Zb, Ya, Yb)
 }

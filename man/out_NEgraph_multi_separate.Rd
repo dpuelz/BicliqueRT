@@ -14,6 +14,10 @@ Please see Sec. 8 of the paper for more details.}
 
 \item{expos}{A three-way array with dimensions (number of units x number of randomizations x dimension of exposure).
 Its entry records the exposure \code{f_i(z)} of units under treatments, where the exposure has more than one dimensions.}
+
+\item{null_equiv}{A function that determines whether two exposure values are equivalent under the null hypothesis.}
+
+\item{dim_exposure}{The dimension of the exposure vector.}
 }
 \value{
 A matrix of dimension (\code{num_units} x \code{length(Z0)}) which is the multi-null exposure graph

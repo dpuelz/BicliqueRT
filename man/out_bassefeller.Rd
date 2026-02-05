@@ -10,13 +10,13 @@ out_bassefeller(
   Zobs,
   tau_main,
   housestruct = NULL,
-  tau_equal = F,
+  tau_equal = FALSE,
   sig_c = 0.1,
   sig_y = 0.5,
   taus = 0.7,
   taup = 1.5,
   mu00 = 2,
-  equal = T
+  equal = TRUE
 )
 }
 \arguments{

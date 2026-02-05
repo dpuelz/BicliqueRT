@@ -46,7 +46,7 @@
 #'
 #' @export
 biclique.decompose = function(Z, hypothesis,
-                              controls=list(method="greedy", mina=10, num_randomizations=2000), stop_Zobs=F){
+                              controls=list(method="greedy", mina=10, num_randomizations=2000), stop_Zobs=FALSE){
 
   # catch functions and controls from hypothesis and controls
   design_fn = hypothesis$design_fn
@@ -62,20 +62,20 @@ biclique.decompose = function(Z, hypothesis,
   # check decomposition in controls
   decom = controls$method
   if (is.null(decom)) {
-    stop("controls should contain the decomposition method", call. = F)
+    stop("controls should contain the decomposition method", call. = FALSE)
   } else if (decom=="bimax") {
     minr = controls$minr
     minc = controls$minc
     if (!(is.numeric(minr)&is.numeric(minc))) {
-      stop("if 'bimax' is used in controls, should supply both 'minr' and 'minc' as integer", call. = F)
+      stop("if 'bimax' is used in controls, should supply both 'minr' and 'minc' as integer", call. = FALSE)
     }
   } else if (decom=="greedy"){
     mina = controls$mina
     if (!is.numeric(mina)) {
-      stop("if 'greedy' is used in controls, should supply 'mina' as integer", call. = F)
+      stop("if 'greedy' is used in controls, should supply 'mina' as integer", call. = FALSE)
     }
   } else {
-    stop("the decomposition method in controls should be either 'bimax' or 'greedy'", call. = F)
+    stop("the decomposition method in controls should be either 'bimax' or 'greedy'", call. = FALSE)
   }
 
   # generate randomizations using design_fn & num_randomizations --> Z_m
@@ -103,7 +103,7 @@ biclique.decompose = function(Z, hypothesis,
   }
 
   # decompose the null-exposure graph
-  cat("decompose the null-exposure graph ... \n")
+  message("decompose the null-exposure graph ...")
   Z0 = 1:dim(Z_m)[2]
   MNE = list()
 
@@ -115,7 +115,7 @@ biclique.decompose = function(Z, hypothesis,
   if (decom == 'bimax'){
     method = "Clique test with Bimax decomposition."
     while (length(Z0)>0){
-      cat("\r","Z0 now has length", length(Z0), '...')
+      message("Z0 now has length ", length(Z0), " ...")
 
       Zsub = sample(1:length(Z0), size = 1) # Zsub here is an index of vector Z0
       # multiNEgraph = out_NEgraph_multi(Zsub, Z0, Z_m, num_units, exposure_fn)
@@ -127,8 +127,8 @@ biclique.decompose = function(Z, hypothesis,
       numleft = ncol(multiNEgraph)
       minr.new = min(minr, numleft)
       minc.new = min(minc, numleft)
-      bitest = biclust(multiNEgraph, method=BCBimax(), minr.new, minc.new, number=1)
-      bicliqMat = bicluster(multiNEgraph, bitest)
+      bitest = bimax_biclust(multiNEgraph, minr.new, minc.new, number = 1)
+      bicliqMat = bimax_extract(multiNEgraph, bitest)
       themat = bicliqMat$Bicluster1
 
       # if current minr & minc gives no biclique decom, try a smaller one
@@ -136,8 +136,8 @@ biclique.decompose = function(Z, hypothesis,
         numleft = numleft - 1
         minr.new = min(minr, numleft)
         minc.new = min(minc, numleft)
-        bitest = biclust(multiNEgraph, method=BCBimax(), minr.new, minc.new, number=1)
-        bicliqMat = bicluster(multiNEgraph, bitest)
+        bitest = bimax_biclust(multiNEgraph, minr.new, minc.new, number = 1)
+        bicliqMat = bimax_extract(multiNEgraph, bitest)
         themat = bicliqMat$Bicluster1
       }
 
@@ -146,12 +146,12 @@ biclique.decompose = function(Z, hypothesis,
         # next # perhaps just skip this loop and redraw a new Zsub
         # to get full decom, read col numbers from bicluster and assign it to this N' x 1 matrix
         themat = as.matrix(themat)
-        colnames(themat) = biclusternumber(bitest)$Bicluster1$Cols
+        colnames(themat) = bimax_indices(bitest)$Bicluster1$Cols
       }
       focal_unit = as.integer(rownames(themat))
       focal_ass = as.integer(colnames(themat)); focal_ass_match = Z0[focal_ass]
 
-      Z_m_assignments = Z_m[,focal_ass_match, drop=F]
+      Z_m_assignments = Z_m[,focal_ass_match, drop=FALSE]
       if (length(focal_ass_match) == 1) {Z_m_assignments = as.matrix(Z_m_assignments)} # N' x 1 clique
       rownames(Z_m_assignments) = 1:num_units
       colnames(Z_m_assignments) = focal_ass_match
@@ -170,7 +170,7 @@ biclique.decompose = function(Z, hypothesis,
   if (decom == 'greedy'){
     method = "Clique test with greedy decomposition."
     while (length(Z0)>0){
-      cat("\r","Z0 now has length", length(Z0), '...')
+      message("Z0 now has length ", length(Z0), " ...")
 
       Zsub = sample(1:length(Z0), size = 1) # Zsub here is an index of vector Z0
       multiNEgraph = out_NEgraph_multi_separate(Zsub, Z0, expos, null_equiv, dim_exposure)
@@ -179,7 +179,7 @@ biclique.decompose = function(Z, hypothesis,
 
       if (dim(multiNEgraph)[2]<=num_ass){ # when remaining cols below threshold mina
         units_leftover = which(rowSums(multiNEgraph)==dim(multiNEgraph)[2])
-        themat = multiNEgraph[units_leftover,, drop=F]
+        themat = multiNEgraph[units_leftover,, drop=FALSE]
         break_signal = TRUE
       } else {
         ### should not remove isolated units here, otherwise rownames of multiNEgraph is distorted,
@@ -199,7 +199,7 @@ biclique.decompose = function(Z, hypothesis,
         next
       }
 
-      Z_m_assignments = Z_m[,focal_ass_match, drop=F]
+      Z_m_assignments = Z_m[,focal_ass_match, drop=FALSE]
       rownames(Z_m_assignments) = 1:num_units
       colnames(Z_m_assignments) = focal_ass_match
       MNE = append(MNE, list(list(units = focal_unit, assignments = Z_m_assignments)))
@@ -264,7 +264,7 @@ biclique.decompose = function(Z, hypothesis,
 #' from a multi-null exposure graph and contains its focal units and focal assignments.
 #'
 #' @export
-clique_test = function(Y, Z, teststat, biclique_decom, alpha=0.05, one_sided=T){
+clique_test = function(Y, Z, teststat, biclique_decom, alpha=0.05, one_sided=TRUE){
 
   # catch test statistic
   stopifnot("teststat should be specified as a function" = is.function(teststat))
@@ -336,7 +336,11 @@ clique_test = function(Y, Z, teststat, biclique_decom, alpha=0.05, one_sided=T){
 #' @param decom The algorithm used to calculate the biclique decomposition. Currently supported algorithms
 #' are "bimax" and "greedy".
 #' @param ret_ci Whether calculates the \eqn{1-\alpha} confidence interval or not. Default is \code{FALSE}.
-#' @param ... Other stuff ...
+#' @param ci_dec Number of decimal places for the confidence interval. Default is 2.
+#' @param ci_method Method to compute CI: \code{"grid"} or \code{"bisection"}. Default is \code{"grid"}.
+#' @param ... Additional arguments including \code{minr}, \code{minc}, \code{mina},
+#'   \code{exclude_treated}, \code{stop_at_Zobs}, \code{ret_pval}, \code{adj_Y},
+#'   \code{ci_ub}, \code{ci_lb}.
 #'
 #' @return A list of items summarizing the randomization test. If for some focal assignments
 #' in the biclique that contains \code{Zobs}, exposures for each unit are the same, it will
@@ -355,11 +359,11 @@ clique_test_contrast = function(Y, Z, Z_a, Z_b, Zobs_id, Xadj=NULL, alpha=0.05, 
   if(is.null(addparam$adj_Y)){ adj_Y=FALSE } else { adj_Y=(addparam$adj_Y)&(!is.null(Xadj)) } # is TRUE iff we specify it and Xadj is not null
 
   # make the null-exposure graph
-  cat("construct the null-exposure graph ... \n")
+  message("construct the null-exposure graph ...")
   NEgraph = out_NEgraph_contrast(Z_a,Z_b,Z,exclude_treated)
 
   # decompose the null-exposure graph
-  cat("decompose the null-exposure graph ... \n")
+  message("decompose the null-exposure graph ...")
   if (decom == 'bimax'){
     decomp = out_clique_decomposition_bimax(NEgraph, Zobs_id,
                                             minr=addparam$minr, minc=addparam$minc, stop_at_Zobs)
@@ -388,7 +392,7 @@ clique_test_contrast = function(Y, Z, Z_a, Z_b, Zobs_id, Xadj=NULL, alpha=0.05, 
   # check whether the conditional_clique has non-unique exposure for each focal assignment, which is essential for the test.
   check_clique_unique <- apply(conditional_clique, 2, function(x) length(unique(x))==1)
   if (sum(check_clique_unique)!=0){
-    cat("The biclique containing Zobs contains only one exposure for some focal assignment, and therefore the result is a powerless test \n")
+    message("The biclique containing Zobs contains only one exposure for some focal assignment, and therefore the result is a powerless test")
     check_clique_unique <- "Powerless test, because the biclique containing Zobs contains only one exposure for some focal assignment"
   } else {
     check_clique_unique <- c()
@@ -404,8 +408,7 @@ clique_test_contrast = function(Y, Z, Z_a, Z_b, Zobs_id, Xadj=NULL, alpha=0.05, 
     Y.clique = Y[focal_units]
 
     # run the test
-    cat("\n")
-    cat("run the clique-based randomization test ... \n")
+    message("run the clique-based randomization test ...")
     Zobs_cliqid = which(Zobs_id==focal_assignments)
     tobs = ate(conditional_clique[, Zobs_cliqid], Y.clique)
     tvals = apply(as.matrix(conditional_clique[, -Zobs_cliqid]), 2, function(z) ate(z, Y.clique))
@@ -413,7 +416,7 @@ clique_test_contrast = function(Y, Z, Z_a, Z_b, Zobs_id, Xadj=NULL, alpha=0.05, 
     decision = out_pval(rtest_out, ret_pval, alpha)
 
     if (sum(abs(tvals-tobs))/length(focal_assignments) < 1e-14){
-      cat("The test statistics are identical under each focal assignment. p-value is not available")
+      message("The test statistics are identical under each focal assignment. p-value is not available")
       check_equal_statistics <- "The test statistics are identical under each focal assignment. p-value is not available"
       decision = NA
     } else {
@@ -435,14 +438,16 @@ clique_test_contrast = function(Y, Z, Z_a, Z_b, Zobs_id, Xadj=NULL, alpha=0.05, 
     ci_lb = round(ci_lb, ci_dec) - 10^(-ci_dec+1)
 
     if (ci_method == "grid"){
-      ci_out = CI_grid(ci_lb, ci_ub, ci_dec)
+      ci_out = CI_grid(ci_lb, ci_ub, ci_dec, Z_a, Z_b, Y, focal_units,
+                       conditional_clique, Zobs_cliqid, alpha)
     } else if (ci_method == "bisection"){
-      ci_out = CI_bisection(ci_lb, ci_ub, ci_dec)
+      ci_out = CI_bisection(ci_lb, ci_ub, ci_dec, Z_a, Z_b, Y, focal_units,
+                            conditional_clique, Zobs_cliqid, alpha)
     }
 
     ci_lb_out = ci_out[1]
     ci_ub_out = ci_out[2]
-    cat(sprintf("The %s%% confidence interval is [%s,%s] \n", round((1-alpha)*100, 4), ci_lb_out, ci_ub_out))
+    message(sprintf("The %s%% confidence interval is [%s,%s]", round((1-alpha)*100, 4), ci_lb_out, ci_ub_out))
 
     retlist = list(ci=list(lb=ci_lb_out, ub=ci_ub_out),
                    focal_units=focal_units, focal_assignments=focal_assignments,

@@ -4,7 +4,7 @@
 \alias{clique_test}
 \title{The generalized main randomization test function.}
 \usage{
-clique_test(Y, Z, teststat, biclique_decom, alpha = 0.05, one_sided = T)
+clique_test(Y, Z, teststat, biclique_decom, alpha = 0.05, one_sided = TRUE)
 }
 \arguments{
 \item{Y}{The observed outcome vector.}

@@ -76,12 +76,12 @@ sparsify <- function(mat){
 #'
 #' @return A vector of length \code{K} that gives the number of kids in each household.
 #' @export
-out_house_structure = function(N=900,K=N/3,equal=T){
+out_house_structure = function(N=900,K=N/3,equal=TRUE){
   if(equal){ # exactly N observations
     housestruct = rep(N/K,K)
   }
   if(!equal){ # on average N observations
-    housestruct = sample(2:((2*N/K)-2),K,replace=T)
+    housestruct = sample(2:((2*N/K)-2),K,replace=TRUE)
   }
   housestruct
 }
@@ -109,7 +109,7 @@ sample_mod = function(k){
 #' @return A list specifies treated houses and treated kids in each treated houses.
 #' @export
 out_treat_household = function(housestruct, K1){
-  which_house = sample(1:length(housestruct),size=K1,replace=F) # which households to treat?
+  which_house = sample(1:length(housestruct),size=K1,replace=FALSE) # which households to treat?
   which_kid = apply(as.matrix(housestruct[which_house]),1,sample_mod) # which kids to treat (conditional on the treated households)?
   return(list(which_house=which_house,which_kid=which_kid))
 }
@@ -169,7 +169,7 @@ out_Z_household = function(N,K,treatment_list,housestruct){
 #'
 #' @return A matrix of dimension (number of units x number of randomizations, i.e. assignments.) comprised of 0, denoting a unit is pure control under that particular assignment, 1 denoting a unit is a spillover under that particular assignment, and 2, denoting a unit is treated under that particular assignment.
 #' @export
-out_Zprime = function(N,K,equal=T,numrand){
+out_Zprime = function(N,K,equal=TRUE,numrand){
   housestruct = out_house_structure(N,K,equal)
   Zprime_mat = matrix(0,nrow=N,ncol=numrand)
   for(nn in 1:numrand){
@@ -205,9 +205,9 @@ out_Zprime = function(N,K,equal=T,numrand){
 #'
 #' @return An outcome vector of length \code{N}.
 #' @export
-out_bassefeller = function(N, K, Zobs, tau_main, housestruct=NULL, tau_equal = F,
+out_bassefeller = function(N, K, Zobs, tau_main, housestruct=NULL, tau_equal = FALSE,
                            sig_c = 0.1, sig_y = 0.5, taus = 0.7, taup = 1.5, mu00 = 2,
-                           equal = T){
+                           equal = TRUE){
   sig_mu <- sig_taup <- sig_taus <- sig_c
   Yi00 = rnorm(K,mu00,sig_mu)
   tauip = rnorm(K,taup,sig_taup)
@@ -262,6 +262,8 @@ out_bassefeller = function(N, K, Zobs, tau_main, housestruct=NULL, tau_equal = F
 #' @param p_indi_nt The probability of an individual in the non-treated group being treated.
 #' @param N The number of randomizations performed.
 #' @param fmax Maximum number of units to be selected to do the diagnosis. Default is 25.
+#' @param NR Number of internal replications for Monte Carlo estimation. Default is 500.
+#' @param Nx Number of multinomial draws for the diagnostic. Default is 500.
 #' @return an \code{fmax} by 2 matrix.
 #' @export
 clique_diagnostic = function(struc, p_group, p_indi_t, p_indi_nt, N, fmax = 25, NR = 500, Nx = 500){
@@ -271,7 +273,7 @@ clique_diagnostic = function(struc, p_group, p_indi_t, p_indi_nt, N, fmax = 25, 
   largest_clique = matrix(nrow = fmax, ncol = 2)
 
   for (f in 1:fmax){
-    cat('\r','doing diagnostic for the number of focal units being ',f,'...')
+    message("doing diagnostic for the number of focal units being ", f, " ...")
     prob_f = 0; prob_f_val = 0
     x_rand = rmultinom(n = Nx, size = f, prob_group)
 

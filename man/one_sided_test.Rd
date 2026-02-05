@@ -10,6 +10,8 @@ one_sided_test(tobs, tvals, tol = 1e-14)
 \item{tobs}{The observed value of the test statistic (scalar).}
 
 \item{tvals}{A vector of randomization values of the test statistic (to compare with \code{tobs}).}
+
+\item{tol}{Tolerance for equality comparison. Default is \code{1e-14}.}
 }
 \value{
 p-value for one-sided testing.

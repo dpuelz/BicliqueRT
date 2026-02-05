@@ -1,0 +1,535 @@
+\documentclass[article]{jss}
+
+%% -- LaTeX packages and custom commands ---------------------------------------
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{booktabs}
+
+%% -- Article metainformation --------------------------------------------------
+
+\author{David Puelz\\University of Austin \And
+        Panos Toulis\\University of Chicago \And
+        Shuxiao Huang\\University of Chicago}
+\Plainauthor{David Puelz, Panos Toulis, Shuxiao Huang}
+
+\title{\pkg{BicliqueRT}: Randomization Tests for Causal Effects Under General Interference in \proglang{R}}
+\Plaintitle{BicliqueRT: Randomization Tests for Causal Effects Under General Interference in R}
+\Shorttitle{\pkg{BicliqueRT}: Randomization Tests Under Interference}
+
+\Abstract{
+We present \pkg{BicliqueRT}, an \proglang{R} package for conducting exact,
+finite-sample valid randomization tests of causal effects in experiments
+with interference.  In such settings, the treatment assigned to one unit
+may affect the outcomes of others, invalidating standard randomization
+tests that assume no interference.  The package implements the
+biclique-based conditional randomization test framework of
+\citet{puelz2022graph}, which constructs a null-exposure graph from the
+experimental design and null hypothesis, decomposes it into bicliques, and
+conditions on a biclique containing the observed treatment allocation to
+obtain a valid test.  \pkg{BicliqueRT} supports arbitrary interference
+structures---including spatial, network, and clustered
+interference---through a flexible interface for specifying exposure
+mappings and null hypotheses.  Two decomposition algorithms are available:
+the Bimax algorithm for binary inclusion-maximal biclusters and a greedy
+heuristic.  We illustrate the package with examples covering spatial
+networks, clustered experiments, and contrast hypotheses with confidence
+intervals.
+}
+
+\Keywords{causal inference, interference, randomization test, biclique decomposition, \proglang{R}}
+\Plainkeywords{causal inference, interference, randomization test, biclique decomposition, R}
+
+\Address{
+  David Puelz\\
+  University of Austin\\
+  Austin, TX, United States of America\\
+  E-mail: \email{dpuelz@uaustin.org}\\
+
+  Panos Toulis\\
+  Booth School of Business\\
+  University of Chicago\\
+  Chicago, IL, United States of America\\
+
+  Shuxiao Huang\\
+  Department of Statistics\\
+  University of Chicago\\
+  Chicago, IL, United States of America
+}
+
+\begin{document}
+
+
+%% -- Introduction -------------------------------------------------------------
+
+\section{Introduction} \label{sec:intro}
+
+Randomized experiments are the gold standard for estimating causal effects.
+In the classical framework pioneered by \citet{fisher1935design} and
+formalized by \citet{rubin1980randomization}, the potential outcomes of
+each unit are assumed to depend only on that unit's own treatment
+assignment.  This assumption, known as the \emph{stable unit treatment
+value assumption} (SUTVA) or \emph{no interference}, is violated in many
+modern experimental settings.  For example, in social network experiments,
+vaccinating one individual may protect their neighbors; in spatial
+experiments, treating an agricultural plot may affect adjacent plots; and
+in clustered experiments, treating one household member may spill over to
+other members.
+
+The presence of interference complicates causal inference because the
+potential outcomes of each unit can depend on the entire vector of treatment
+assignments.  A growing literature has developed methods for causal
+inference under interference, including work by
+\citet{hudgens2008toward}, \citet{sobel2006randomized},
+\citet{aronow2017estimating}, and \citet{basse2019randomization}.
+
+\citet{puelz2022graph} proposed a graph-theory approach to
+randomization tests under general interference.  Their key insight is to
+construct a \emph{null-exposure graph} that encodes which units and
+treatment assignments are compatible under the null hypothesis.  A
+biclique decomposition of this graph yields conditional randomization
+tests that are valid in finite samples under arbitrary interference
+patterns.
+
+The \pkg{BicliqueRT} package implements this methodology in \proglang{R}
+\citep{R}.  It provides a complete workflow for:
+\begin{enumerate}
+  \item Specifying an experiment design, exposure mapping, and null
+        hypothesis;
+  \item Constructing and decomposing the null-exposure graph using the
+        Bimax algorithm \citep{prelic2006systematic} or a greedy
+        heuristic;
+  \item Conducting conditional randomization tests with user-specified or
+        built-in test statistics;
+  \item Computing confidence intervals by inverting the test.
+\end{enumerate}
+
+The remainder of this paper is organized as follows.
+Section~\ref{sec:method} reviews the methodological background.
+Section~\ref{sec:package} describes the package structure and core
+functions. Section~\ref{sec:illustrations} provides worked examples.
+Section~\ref{sec:comparison} compares \pkg{BicliqueRT} with related
+software. Section~\ref{sec:summary} concludes.
+
+
+%% -- Methodological Background ------------------------------------------------
+
+\section{Methodological background} \label{sec:method}
+
+\subsection{Setup and notation}
+
+Consider an experiment with $N$ units indexed by $i = 1, \ldots, N$.  Let
+$Z = (Z_1, \ldots, Z_N) \in \{0,1\}^N$ denote the vector of treatment
+assignments, where $Z_i = 1$ indicates that unit $i$ is treated.  Under
+interference, the potential outcome of unit $i$ under the full treatment
+vector $z$ is $Y_i(z)$.  The observed outcome is $Y_i^{\text{obs}} =
+Y_i(Z)$.
+
+\subsection{Exposure mappings and null hypotheses}
+
+An \emph{exposure mapping} is a function $f_i: \{0,1\}^N \to
+\mathcal{E}$ that maps the full treatment vector to an exposure value for
+unit~$i$.  For example, $f_i(z) = z_i$ corresponds to no interference
+(the exposure of $i$ is simply its own treatment), while $f_i(z) = (z_i,
+\sum_{j \in \mathcal{N}_i} z_j)$ captures both direct treatment and the
+number of treated neighbors.
+
+A null hypothesis is specified through the exposure mapping and an
+equivalence relation.  For instance, the null of no interference states
+\[
+  H_0: Y_i(z) = Y_i(z') \quad \text{for all } i \text{ and all } z, z'
+  \text{ such that } f_i(z) = f_i(z').
+\]
+
+\subsection{The null-exposure graph}
+
+Given the exposure mapping, null hypothesis, and a set of treatment
+assignments $\mathcal{Z} = \{z^{(1)}, \ldots, z^{(M)}\}$ drawn from the
+experimental design, the \emph{null-exposure graph} is a bipartite graph
+$G = (\mathcal{U}, \mathcal{Z}, E)$ where $\mathcal{U} = \{1, \ldots,
+N\}$ is the set of units and $\mathcal{Z}$ is the set of assignments.  An
+edge $(i, z^{(m)})$ exists if and only if unit $i$'s exposure under
+$z^{(m)}$ is equivalent to its exposure under the observed assignment
+$z^{\text{obs}}$, as determined by the null hypothesis.
+
+\subsection{Biclique decomposition and conditional tests}
+
+A \emph{biclique} in $G$ is a complete bipartite subgraph: a set of units
+$\mathcal{F} \subseteq \mathcal{U}$ (the \emph{focal units}) and a set
+of assignments $\mathcal{A} \subseteq \mathcal{Z}$ (the \emph{focal
+assignments}) such that every unit--assignment pair is connected.  Under
+the null hypothesis, the potential outcomes of all focal units are
+invariant across all focal assignments.
+
+The key result of \citet{puelz2022graph} is that conditioning on a
+biclique yields a valid randomization test:
+\begin{enumerate}
+  \item Decompose the null-exposure graph into bicliques that partition
+        the assignment space.
+  \item Identify the biclique containing the observed assignment
+        $z^{\text{obs}}$.
+  \item Compute a test statistic $T(Y, z)$ for each assignment $z$ in the
+        biclique.
+  \item The p-value is the proportion of assignments in the biclique that
+        yield a test statistic at least as extreme as the observed value.
+\end{enumerate}
+
+This conditional test controls the Type~I error rate at level $\alpha$ in
+finite samples, regardless of the form of interference, provided the null
+hypothesis is correctly specified.
+
+\subsection{Decomposition algorithms}
+
+\pkg{BicliqueRT} implements two decomposition algorithms:
+
+\paragraph{Bimax.}  The Bimax algorithm \citep{prelic2006systematic} finds
+binary inclusion-maximal biclusters.  It uses a divide-and-conquer
+strategy: pick a column, divide rows by whether they have a 1 or 0 in
+that column, and recurse.  The algorithm is controlled by minimum row
+(\code{minr}) and column (\code{minc}) size parameters.
+
+\paragraph{Greedy.}  A greedy heuristic that iteratively selects random
+units and adds them to the focal set as long as the resulting biclique
+has at least \code{mina} assignments.  This approach is faster but may
+yield less balanced bicliques.
+
+
+%% -- The Package --------------------------------------------------------------
+
+\section[The BicliqueRT package]{The \pkg{BicliqueRT} package} \label{sec:package}
+
+\subsection{Installation}
+
+The package can be installed from CRAN:
+\begin{Code}
+install.packages("BicliqueRT")
+\end{Code}
+or from GitHub:
+\begin{Code}
+remotes::install_github("dpuelz/BicliqueRT")
+\end{Code}
+
+\subsection{Core workflow}
+
+The \pkg{BicliqueRT} package supports two main workflows, corresponding
+to two classes of null hypotheses.
+
+\subsubsection{Generalized interface}
+
+For arbitrary null hypotheses, the workflow is:
+\begin{enumerate}
+  \item Define the hypothesis via a list with three components:
+        \code{design\_fn} (the randomization mechanism), \code{exposure\_i}
+        (the exposure mapping), and \code{null\_equiv} (the equivalence
+        relation under the null).
+  \item Call \code{biclique.decompose()} to construct the null-exposure
+        graph and decompose it into bicliques.
+  \item Call \code{clique\_test()} with a test statistic to conduct the
+        conditional randomization test.
+\end{enumerate}
+
+\begin{Code}
+hypothesis <- list(
+  design_fn  = function() rbinom(N, 1, 0.3),
+  exposure_i = function(z, i) z[i],
+  null_equiv = function(e1, e2) identical(e1, e2)
+)
+controls <- list(method = "greedy", mina = 10, num_randomizations = 2000)
+decomp <- biclique.decompose(Z, hypothesis, controls)
+tstat  <- gen_tstat(G, type = "htn")
+result <- clique_test(Y, Z, tstat, decomp)
+\end{Code}
+
+\subsubsection{Contrast interface}
+
+For contrast-type null hypotheses $H_0: Y_i(b) = Y_i(a) + \tau$ for all
+$i$, the dedicated function \code{clique\_test\_contrast()} handles the
+entire workflow:
+
+\begin{Code}
+result <- clique_test_contrast(
+  Y = Y, Z = Z, Z_a = Z_a, Z_b = Z_b,
+  Zobs_id = 1, alpha = 0.05, tau = 0,
+  decom = "greedy", mina = 10
+)
+\end{Code}
+
+\subsection{Key functions}
+
+Table~\ref{tab:functions} summarizes the main functions.
+
+\begin{table}[t!]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Function} & \textbf{Description} \\
+\midrule
+\code{biclique.decompose()} & Decompose the null-exposure graph \\
+\code{clique\_test()}       & Generalized randomization test \\
+\code{clique\_test\_contrast()} & Contrast hypothesis test \\
+\code{gen\_tstat()}         & Generate built-in test statistics \\
+\code{one\_sided\_test()}   & One-sided p-value \\
+\code{two\_sided\_test()}   & Two-sided p-value \\
+\code{clique\_diagnostic()} & Diagnostic for tuning parameters \\
+\code{CI\_grid()}           & Confidence interval (grid method) \\
+\code{CI\_bisection()}      & Confidence interval (bisection method) \\
+\bottomrule
+\end{tabular}
+\caption{\label{tab:functions}Main functions in \pkg{BicliqueRT}.}
+\end{table}
+
+\subsection{Test statistics}
+
+The \code{gen\_tstat()} function provides three test statistics from
+\citet{athey2018exact}:
+\begin{itemize}
+  \item \code{"elc"}: Edge-level contrast, measuring the difference in
+        average outcomes between focal units with treated vs.\ untreated
+        neighbors.
+  \item \code{"score"}: A score-type statistic based on the correlation
+        between residuals and peer treatment exposure.
+  \item \code{"htn"}: Has-treated-neighbor statistic, measuring the
+        correlation between outcomes and having at least one treated
+        neighbor.
+\end{itemize}
+
+Users can also supply custom test statistics as functions with signature
+\code{function(y, z, is\_focal)}.
+
+\subsection{Confidence intervals}
+
+Confidence intervals are obtained by inverting the test.  For a contrast
+hypothesis $H_0(\tau): Y_i(b) = Y_i(a) + \tau$, the $1-\alpha$
+confidence interval is the set of $\tau$ values for which $H_0(\tau)$ is
+not rejected at level $\alpha$.  Two methods are available:
+\begin{itemize}
+  \item \code{CI\_grid()}: Evaluates the test on a grid of $\tau$ values.
+  \item \code{CI\_bisection()}: Uses bisection to find the interval
+        endpoints more efficiently.
+\end{itemize}
+
+\subsection{Parallel computation}
+
+The \pkg{foreach} backend \citep{pkg:foreach} is used for parallelizing
+the grid-based confidence interval computation.  Users can register a
+parallel backend (e.g., via \pkg{doParallel}) before calling the
+test.
+
+
+%% -- Illustrations ------------------------------------------------------------
+
+\section{Illustrations} \label{sec:illustrations}
+
+\subsection{Spatial interference}
+
+We demonstrate the generalized interface by testing the null hypothesis of
+no interference in a synthetic spatial network.
+
+\begin{Code}
+library("BicliqueRT")
+set.seed(42)
+num_units <- 50
+
+# Generate a spatial network (3 Gaussian clusters)
+net <- out_example_network(num_units)
+D <- net$D
+
+# Adjacency matrix: connect units within distance 0.15
+G <- (D < 0.15 & D > 0) * 1
+
+# Treatment and outcomes
+Z <- rbinom(num_units, 1, 0.3)
+Y <- rnorm(num_units) + 0.5 * Z
+
+# Hypothesis: no interference (exposure = own treatment)
+hypothesis <- list(
+  design_fn  = function() rbinom(num_units, 1, 0.3),
+  exposure_i = function(z, i) z[i],
+  null_equiv = function(e1, e2) identical(e1, e2)
+)
+
+controls <- list(method = "greedy", mina = 10, num_randomizations = 500)
+decomp <- biclique.decompose(Z, hypothesis, controls)
+
+tstat <- gen_tstat(G, type = "htn")
+result <- clique_test(Y, Z, tstat, decomp)
+result$p.value
+\end{Code}
+
+\subsection{Clustered interference}
+
+For clustered experiments, we use the contrast interface with the
+\citet{basse2018model} data-generating process.
+
+\begin{Code}
+set.seed(123)
+N <- 90; K <- 30; numrand <- 200
+
+Zprime <- out_Zprime(N, K, equal = TRUE, numrand = numrand)
+Z_a <- (Zprime == 1) * 1   # spillover
+Z_b <- (Zprime == 0) * 1   # pure control
+Z_treat <- (Zprime == 2) * 1
+
+Zobs_id <- 1
+bf <- out_bassefeller(N, K, Zobs = Zprime[, Zobs_id], tau_main = 0)
+
+result <- clique_test_contrast(
+  Y = bf$Yobs, Z = Z_treat, Z_a = Z_a, Z_b = Z_b,
+  Zobs_id = Zobs_id, decom = "greedy", mina = 10
+)
+result$decision
+\end{Code}
+
+\subsection{Network interference with extent-of-interference null}
+
+Here we test a more complex null hypothesis: the extent-of-interference
+null, where the exposure includes both own treatment and the count of
+treated neighbors.
+
+\begin{Code}
+set.seed(99)
+num_units <- 40
+
+# Erdos-Renyi graph
+G <- matrix(0, num_units, num_units)
+for (i in 1:(num_units - 1))
+  for (j in (i + 1):num_units)
+    if (runif(1) < 0.1) G[i, j] <- G[j, i] <- 1
+
+Z <- rbinom(num_units, 1, 0.3)
+Y <- rnorm(num_units) + 0.3 * (G %*% Z)
+
+hypothesis <- list(
+  design_fn  = function() rbinom(num_units, 1, 0.3),
+  exposure_i = function(z, i) c(z[i], sum(G[i, ] * z)),
+  null_equiv = function(e1, e2) identical(e1, e2)
+)
+
+controls <- list(method = "greedy", mina = 5, num_randomizations = 300)
+decomp <- biclique.decompose(Z, hypothesis, controls)
+
+tstat <- gen_tstat(G, type = "score")
+result <- clique_test(Y, Z, tstat, decomp)
+result$p.value
+\end{Code}
+
+\subsection{Confidence intervals for contrast hypotheses}
+
+Confidence intervals are obtained by inverting the contrast test over a
+grid of $\tau$ values.
+
+\begin{Code}
+set.seed(123)
+N <- 90; K <- 30; numrand <- 200
+
+Zprime <- out_Zprime(N, K, equal = TRUE, numrand = numrand)
+Z_a <- (Zprime == 1) * 1
+Z_b <- (Zprime == 0) * 1
+Z_treat <- (Zprime == 2) * 1
+
+Zobs_id <- 1
+bf <- out_bassefeller(N, K, Zobs = Zprime[, Zobs_id], tau_main = 0.5)
+
+result_ci <- clique_test_contrast(
+  Y = bf$Yobs, Z = Z_treat, Z_a = Z_a, Z_b = Z_b,
+  Zobs_id = Zobs_id, decom = "greedy", mina = 10,
+  ret_ci = TRUE, ci_method = "grid", ci_dec = 1
+)
+result_ci$ci
+\end{Code}
+
+
+%% -- Comparison with related software -----------------------------------------
+
+\section{Comparison with related software} \label{sec:comparison}
+
+Several \proglang{R} packages address randomization inference, but none
+handle general interference.  Table~\ref{tab:comparison} summarizes the
+comparison.
+
+\begin{table}[t!]
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Package} & \textbf{Interference} & \textbf{Finite-sample valid} & \textbf{General networks} \\
+\midrule
+\pkg{ri2} \citep{pkg:ri2}          & No & Yes & No \\
+\pkg{coin} \citep{pkg:coin}        & No & Yes & No \\
+\pkg{interferenceCI} \citep{pkg:interferenceCI} & Partial & Yes & No \\
+\pkg{BicliqueRT}                    & General & Yes & Yes \\
+\bottomrule
+\end{tabular}
+\caption{\label{tab:comparison}Comparison of \proglang{R} packages for
+randomization inference.}
+\end{table}
+
+\paragraph{\pkg{ri2}.} The \pkg{ri2} package \citep{pkg:ri2} implements
+randomization inference for standard randomized experiments, assuming no
+interference.  It provides sharp null tests, confidence intervals, and
+handles various randomization designs.  However, it does not account for
+interference.
+
+\paragraph{\pkg{coin}.} The \pkg{coin} package \citep{pkg:coin}
+implements a general framework for conditional inference via permutation
+tests.  While flexible, it assumes exchangeability of units under the
+null, which is violated under interference.
+
+\paragraph{\pkg{interferenceCI}.} The \pkg{interferenceCI} package
+\citep{pkg:interferenceCI} provides confidence intervals under partial
+interference, where units are grouped into clusters and interference
+occurs only within clusters.  This is a special case of the general
+interference handled by \pkg{BicliqueRT}.
+
+\paragraph{Advantages of \pkg{BicliqueRT}.}  The key advantage is
+generality: \pkg{BicliqueRT} handles arbitrary interference structures
+specified through user-defined exposure mappings, without assuming partial
+interference or any particular network structure.  The tests are exact
+(finite-sample valid) and the framework naturally extends to contrast
+hypotheses and confidence intervals.
+
+\paragraph{Limitations.}  The computational cost of the biclique
+decomposition grows with the number of units and randomizations.  For
+very large experiments ($N > 1000$), the greedy algorithm is recommended
+over Bimax.  Additionally, the power of the test depends on the quality
+of the biclique decomposition; the \code{clique\_diagnostic()} function
+helps users choose tuning parameters.
+
+
+%% -- Summary ------------------------------------------------------------------
+
+\section{Summary and future work} \label{sec:summary}
+
+The \pkg{BicliqueRT} package provides \proglang{R} users with tools for
+conducting exact randomization tests under general interference.  The
+package implements the methodology of \citet{puelz2022graph}, supporting
+both generalized and contrast-type null hypotheses, two decomposition
+algorithms, and built-in test statistics for network experiments.
+
+Future directions include:
+\begin{itemize}
+  \item Improved decomposition algorithms with better worst-case
+        guarantees.
+  \item Extension to multi-valued treatments and continuous exposures.
+  \item Integration with design-based estimators for average treatment
+        effects under interference.
+  \item Faster C-level implementation of the null-exposure graph
+        construction.
+\end{itemize}
+
+The package is available on CRAN at
+\url{https://CRAN.R-project.org/package=BicliqueRT} and on GitHub at
+\url{https://github.com/dpuelz/BicliqueRT}.
+
+
+%% -- Acknowledgments ----------------------------------------------------------
+
+\section*{Acknowledgments}
+
+We thank Guillaume Basse and Avi Feller for foundational contributions
+to the methodology.
+
+
+%% -- Bibliography -------------------------------------------------------------
+
+\bibliography{references}
+
+\end{document}

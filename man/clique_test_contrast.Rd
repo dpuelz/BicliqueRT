@@ -43,7 +43,13 @@ are "bimax" and "greedy".}
 
 \item{ret_ci}{Whether calculates the \eqn{1-\alpha} confidence interval or not. Default is \code{FALSE}.}
 
-\item{...}{Other stuff ...}
+\item{ci_dec}{Number of decimal places for the confidence interval. Default is 2.}
+
+\item{ci_method}{Method to compute CI: \code{"grid"} or \code{"bisection"}. Default is \code{"grid"}.}
+
+\item{...}{Additional arguments including \code{minr}, \code{minc}, \code{mina},
+\code{exclude_treated}, \code{stop_at_Zobs}, \code{ret_pval}, \code{adj_Y},
+\code{ci_ub}, \code{ci_lb}.}
 }
 \value{
 A list of items summarizing the randomization test. If for some focal assignments

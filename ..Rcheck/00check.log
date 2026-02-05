@@ -1,0 +1,36 @@
+* using log directory ‘/Users/davidpuelz/Library/CloudStorage/Dropbox/Panos/BicliqueRT/..Rcheck’
+* using R version 4.3.3 (2024-02-29)
+* using platform: aarch64-apple-darwin20 (64-bit)
+* R was compiled by
+    Apple clang version 14.0.0 (clang-1400.0.29.202)
+    GNU Fortran (GCC) 12.2.0
+* running under: macOS 26.2
+* using session charset: UTF-8
+* using option ‘--as-cran’
+* checking for file ‘./DESCRIPTION’ ... OK
+* checking extension type ... Package
+* this is package ‘BicliqueRT’ version ‘1.0’
+* package encoding: UTF-8
+* checking CRAN incoming feasibility ... [3s/16s] WARNING
+Maintainer: ‘David Puelz <David.Puelz@chicagobooth.edu>’
+
+New submission
+
+Strong dependencies not in mainstream repositories:
+  biclust
+
+Found the following (possibly) invalid URLs:
+  URL: https://www.tandfonline.com/doi/abs/10.1080/01621459.2016.1241178
+    From: README.md
+    Status: 403
+    Message: Forbidden
+
+The build time stamp is missing.
+* checking package namespace information ... OK
+* checking package dependencies ... ERROR
+Package required but not available: ‘biclust’
+
+See section ‘The DESCRIPTION file’ in the ‘Writing R Extensions’
+manual.
+* DONE
+Status: 1 ERROR, 1 WARNING

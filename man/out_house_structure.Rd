@@ -4,7 +4,7 @@
 \alias{out_house_structure}
 \title{Generating household structure}
 \usage{
-out_house_structure(N = 900, K = N/3, equal = T)
+out_house_structure(N = 900, K = N/3, equal = TRUE)
 }
 \arguments{
 \item{N}{The number of observations (kids)}

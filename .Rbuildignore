@@ -1,2 +1,9 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^README\.md$
+^NEWS\.md$
+^\.github$
+^\.claude$
+^\.\.Rcheck$
+^data/columbus\.csv$
+^inst/paper$

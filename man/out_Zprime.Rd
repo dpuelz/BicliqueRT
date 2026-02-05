@@ -4,7 +4,7 @@
 \alias{out_Zprime}
 \title{Returns matrix \code{Z} of dimension (number of units x number of randomizations, i.e. assignments.)}
 \usage{
-out_Zprime(N, K, equal = T, numrand)
+out_Zprime(N, K, equal = TRUE, numrand)
 }
 \arguments{
 \item{N}{The number of observations (kids).}

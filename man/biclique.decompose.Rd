@@ -8,7 +8,7 @@ biclique.decompose(
   Z,
   hypothesis,
   controls = list(method = "greedy", mina = 10, num_randomizations = 2000),
-  stop_Zobs = F
+  stop_Zobs = FALSE
 )
 }
 \arguments{

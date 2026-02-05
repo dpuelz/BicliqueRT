@@ -28,6 +28,10 @@ represents group ID, and the second column is the individual ID. Please see the 
 \item{N}{The number of randomizations performed.}
 
 \item{fmax}{Maximum number of units to be selected to do the diagnosis. Default is 25.}
+
+\item{NR}{Number of internal replications for Monte Carlo estimation. Default is 500.}
+
+\item{Nx}{Number of multinomial draws for the diagnostic. Default is 500.}
 }
 \value{
 an \code{fmax} by 2 matrix.

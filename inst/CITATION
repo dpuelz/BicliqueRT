@@ -1,0 +1,16 @@
+bibentry(
+  bibtype  = "Article",
+  title    = "A Graph-Theory Approach to Randomization Tests of Causal Effects Under General Interference",
+  author   = c(
+    person("David", "Puelz"),
+    person("Guillaume", "Basse"),
+    person("Avi", "Feller"),
+    person("Panos", "Toulis")
+  ),
+  journal  = "Journal of the Royal Statistical Society: Series B (Statistical Methodology)",
+  year     = "2022",
+  volume   = "84",
+  number   = "1",
+  pages    = "174--204",
+  doi      = "10.1111/rssb.12478"
+)

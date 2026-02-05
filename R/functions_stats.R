@@ -5,6 +5,7 @@
 #'
 #' @param tobs The observed value of the test statistic (scalar).
 #' @param tvals A vector of randomization values of the test statistic (to compare with \code{tobs}).
+#' @param tol Tolerance for equality comparison. Default is \code{1e-14}.
 #'
 #' @details The test may randomize the p-value depending on how many \code{tvals}
 #'  are the same as \code{tobs} (up to a tolerance level) to get better performance.
@@ -132,7 +133,8 @@ out_pval = function(rtest_out, ret_pval, alpha, tol = 1e-14) {
 
   pval = 2*min(p1, p2) ## since it's a two-sided test, the 2*min gives a less conservative p-value.
   if(ret_pval) return(pval)
-  return(two_sided_test(tobs, tvals, alpha = alpha))  # this test is less conservative.
+  pval_rand = two_sided_test(tobs, tvals)
+  return(as.integer(pval_rand <= alpha))  # 1 = reject, 0 = fail to reject
 }
 
 
@@ -148,15 +150,13 @@ out_pval = function(rtest_out, ret_pval, alpha, tol = 1e-14) {
 #' @return A single observed outcome vector.
 #'
 #' @examples
-#' Za <- c(1,1,0)
-#' Zb <- c(0,0,1)
-#' # Za and Zb tells us that the first and second individual are exposed to \code{a},
-#' # while the third individual is exposed to \code{b}.
-#' Ya <- rep(0,3)
+#' Za <- c(1, 1, 0)
+#' Zb <- c(0, 0, 1)
+#' # Units 1,2 exposed to a; unit 3 exposed to b
+#' Ya <- rep(0, 3)
 #' Yb <- Ya + 1
-#' # Ya and Yb tells us that all individuals have potential outcome 0 if exposed to \code{a}, 1 if exposed to \code{b}
-#' out_Yobs(Za, Zb, Ya, Yb) # this is what we observed in this trial.
-#' [1] 0 0 1
+#' # Potential outcome 0 under a, 1 under b
+#' out_Yobs(Za, Zb, Ya, Yb)
 #' @export
 out_Yobs = function(z_a,z_b,Y_a,Y_b){
   y = Y_a*z_a + Y_b*z_b
@@ -183,18 +183,24 @@ ate = function(Z,Y){
 
 #' Confidence interval by grid method
 #'
-#' Compute the CI by inverting the test using a grid method
+#' Compute the CI by inverting the test using a grid method.
 #'
 #' @param ci_lb Pre-determined lower bound of the confidence interval.
 #' @param ci_ub Pre-determined upper bound of the confidence interval.
 #' @param ci_dec Decimal of the confidence interval.
+#' @param Z_a Binary matrix indicating exposure to condition a.
+#' @param Z_b Binary matrix indicating exposure to condition b.
+#' @param Y Observed outcome vector.
+#' @param focal_units Indices of focal units in the conditional clique.
+#' @param conditional_clique The conditional clique matrix.
+#' @param Zobs_cliqid Index of observed assignment in the clique.
+#' @param alpha Significance level.
 #'
 #' @export
-CI_grid = function(ci_lb, ci_ub, ci_dec){
-  cat("\n")
-  cat("find the confidence interval for the clique-based randomization test using grid method... \n")
+CI_grid = function(ci_lb, ci_ub, ci_dec, Z_a, Z_b, Y, focal_units,
+                   conditional_clique, Zobs_cliqid, alpha){
+  message("find the confidence interval for the clique-based randomization test using grid method...")
   ci_grid = seq(ci_lb, ci_ub, by=10^(-ci_dec)) # generate grids for CI
-  #ci = rep(1, length(ci_grid))
 
   ci = foreach::foreach(igrid = 1:length(ci_grid), .combine='c', .inorder=TRUE) %dopar% {
     tau_temp = ci_grid[igrid]
@@ -215,14 +221,14 @@ CI_grid = function(ci_lb, ci_ub, ci_dec){
 
 #' Confidence interval by bisection method
 #'
-#' Compute the CI by inverting the test using a grid method
+#' Compute the CI by inverting the test using a bisection method.
 #'
 #' @inheritParams CI_grid
 #'
 #' @export
-CI_bisection = function(ci_lb, ci_ub, ci_dec){
-  cat("\n")
-  cat("find the confidence interval for the clique-based randomization test using bisection method... \n")
+CI_bisection = function(ci_lb, ci_ub, ci_dec, Z_a, Z_b, Y, focal_units,
+                        conditional_clique, Zobs_cliqid, alpha){
+  message("find the confidence interval for the clique-based randomization test using bisection method...")
 
   # pre-selection of ub
   ci_grid = seq(ci_lb, ci_ub, by=10^(-ci_dec+1))
@@ -309,18 +315,18 @@ CI_bisection = function(ci_lb, ci_ub, ci_dec){
   }
 
   if (ub_idx == 1){
-    cat("The upper bound is below the pre-set lower bound")
+    message("The upper bound is below the pre-set lower bound")
     ci_ub_out = ci_lb
   } else if (ub_idx == length(ci_grid) - 1){
-    cat("The upper bound is above the pre-set upper bound")
+    message("The upper bound is above the pre-set upper bound")
     ci_ub_out = ci_ub
   } else {ci_ub_out = round(ci_ub_out, ci_dec)} # err is one order less than ci_dec, hence can round it by ci_dec
 
   if (lb_idx == 2){
-    cat("The lower bound is below the pre-set lower bound")
+    message("The lower bound is below the pre-set lower bound")
     ci_lb_out = ci_lb
   } else if (lb_idx == length(ci_grid)){
-    cat("The lower bound is above the pre-set upper bound")
+    message("The lower bound is above the pre-set upper bound")
     ci_lb_out = ci_ub
   } else {ci_lb_out = round(ci_lb_out, ci_dec)}
 

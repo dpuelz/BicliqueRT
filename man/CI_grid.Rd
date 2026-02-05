@@ -4,7 +4,18 @@
 \alias{CI_grid}
 \title{Confidence interval by grid method}
 \usage{
-CI_grid(ci_lb, ci_ub, ci_dec)
+CI_grid(
+  ci_lb,
+  ci_ub,
+  ci_dec,
+  Z_a,
+  Z_b,
+  Y,
+  focal_units,
+  conditional_clique,
+  Zobs_cliqid,
+  alpha
+)
 }
 \arguments{
 \item{ci_lb}{Pre-determined lower bound of the confidence interval.}
@@ -12,7 +23,21 @@ CI_grid(ci_lb, ci_ub, ci_dec)
 \item{ci_ub}{Pre-determined upper bound of the confidence interval.}
 
 \item{ci_dec}{Decimal of the confidence interval.}
+
+\item{Z_a}{Binary matrix indicating exposure to condition a.}
+
+\item{Z_b}{Binary matrix indicating exposure to condition b.}
+
+\item{Y}{Observed outcome vector.}
+
+\item{focal_units}{Indices of focal units in the conditional clique.}
+
+\item{conditional_clique}{The conditional clique matrix.}
+
+\item{Zobs_cliqid}{Index of observed assignment in the clique.}
+
+\item{alpha}{Significance level.}
 }
 \description{
-Compute the CI by inverting the test using a grid method
+Compute the CI by inverting the test using a grid method.
 }

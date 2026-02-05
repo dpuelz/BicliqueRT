@@ -1,13 +1,33 @@
 Package: BicliqueRT
 Type: Package
-Title: Randomization-Based Testing of Causal Effects under General Interference
-Version: 1.0
-Author: David Puelz
-Maintainer: David Puelz <David.Puelz@chicagobooth.edu>
-Description: Testing of causal effects using clique-based randomization tests.  The tests condition on a clique of the null-exposure graph, allowing for complex and general interference patterns between units to be accounted for in an exact test. Please see the manuscript <arXiv:1910.10862>.
+Title: Randomization Tests for Causal Effects under General Interference
+Version: 1.0.0
+Authors@R: c(
+    person("David", "Puelz", email = "dpuelz@uaustin.org",
+           role = c("aut", "cre")),
+    person("Panos", "Toulis", role = "aut"),
+    person("Shuxiao", "Huang", role = "aut"))
+Description: Implements biclique-based conditional randomization tests for
+    causal effects under general interference. The tests condition on a
+    biclique of the null-exposure graph, allowing for complex and arbitrary
+    interference patterns between experimental units to be accounted for in
+    exact, finite-sample valid tests. Methods are described in Puelz, Basse,
+    Feller, and Toulis (2022) <doi:10.1111/rssb.12478>.
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
-Imports: biclust,Matrix,stats,lattice,foreach
-Suggests: doParallel
-RoxygenNote: 7.2.0
+Depends: R (>= 3.5.0)
+Imports:
+    Matrix,
+    stats,
+    foreach
+Suggests:
+    doParallel,
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+URL: https://github.com/dpuelz/BicliqueRT
+BugReports: https://github.com/dpuelz/BicliqueRT/issues
+NeedsCompilation: yes
+RoxygenNote: 7.3.1
+VignetteBuilder: knitr

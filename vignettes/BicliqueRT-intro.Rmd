@@ -1,0 +1,127 @@
+---
+title: "Introduction to BicliqueRT"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to BicliqueRT}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Overview
+
+The `BicliqueRT` package implements biclique-based conditional randomization
+tests for causal effects under general interference. The methods are described
+in Puelz, Basse, Feller, and Toulis (2022, *JRSSB*).
+
+In experiments with interference, the treatment assigned to one unit can
+affect the outcomes of other units. Standard randomization tests that ignore
+interference are invalid. `BicliqueRT` provides finite-sample valid tests
+by conditioning on a biclique of the null-exposure graph.
+The package supports two main workflows:
+
+1. **Generalized interface** (`biclique.decompose` + `clique_test`): For
+   arbitrary null hypotheses specified via exposure mappings.
+2. **Contrast interface** (`clique_test_contrast`): For contrast-type null
+   hypotheses $H_0: Y_i(a) = Y_i(b) + \tau$ for all $i$.
+
+## Setup
+
+```{r setup}
+library(BicliqueRT)
+```
+
+## Example 1: No-interference null with spatial network
+
+We demonstrate the generalized interface by testing the null hypothesis
+of no interference in a spatial network.
+
+```{r spatial-example, eval=FALSE}
+set.seed(42)
+num_units <- 50
+
+# Generate a spatial network
+net <- out_example_network(num_units)
+D <- net$D
+
+# Create adjacency matrix (connect units within distance 0.15)
+G <- (D < 0.15 & D > 0) * 1
+
+# Generate treatment and outcomes
+Z <- rbinom(num_units, 1, 0.3)
+Y <- rnorm(num_units) + 0.5 * Z
+
+# Define the hypothesis
+hypothesis <- list(
+  design_fn = function() rbinom(num_units, 1, 0.3),
+  exposure_i = function(z, i) z[i],
+  null_equiv = function(e1, e2) identical(e1, e2)
+)
+
+# Decompose with greedy algorithm
+controls <- list(method = "greedy", mina = 10, num_randomizations = 500)
+decomp <- biclique.decompose(Z, hypothesis, controls)
+
+# Generate test statistic and run the test
+tstat <- gen_tstat(G, type = "htn")
+result <- clique_test(Y, Z, tstat, decomp)
+cat("p-value:", result$p.value, "\n")
+```
+
+## Example 2: Clustered interference
+
+For clustered interference (e.g., household experiments), we can test
+a contrast null hypothesis using the specialized interface.
+
+```{r clustered-example, eval=FALSE}
+set.seed(123)
+N <- 90       # number of units
+K <- 30       # number of clusters
+numrand <- 200  # number of randomizations
+
+# Generate cluster structure and treatment assignments
+Zprime <- out_Zprime(N, K, equal = TRUE, numrand = numrand)
+
+# Exposure indicators
+Z_a <- (Zprime == 1) * 1   # spillover exposure
+Z_b <- (Zprime == 0) * 1   # pure control exposure
+Z_treat <- (Zprime == 2) * 1  # direct treatment
+
+# Generate outcomes under the Basse-Feller DGP
+Zobs_id <- 1
+bf <- out_bassefeller(N, K, Zobs = Zprime[, Zobs_id], tau_main = 0)
+Y <- bf$Yobs
+
+# Run the contrast test
+result <- clique_test_contrast(
+  Y = Y, Z = Z_treat, Z_a = Z_a, Z_b = Z_b,
+  Zobs_id = Zobs_id, alpha = 0.05, tau = 0,
+  decom = "greedy", mina = 10
+)
+cat("Decision:", result$decision, "\n")
+```
+
+## Available test statistics
+
+The `gen_tstat` function provides three test statistics described in
+Athey et al. (2018):
+
+- `"elc"`: Edge-level contrast
+- `"score"`: Score-based test
+- `"htn"`: Has-treated-neighbor test
+
+Users can also provide custom test statistics as functions with signature
+`function(y, z, is_focal)`.
+
+## References
+
+Puelz, D., Basse, G., Feller, A., and Toulis, P. (2022). A graph-theory
+approach to randomization tests of causal effects under general interference.
+*Journal of the Royal Statistical Society: Series B*, 84(1), 174--204.
+doi:10.1111/rssb.12478
